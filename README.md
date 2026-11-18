@@ -1,5 +1,7 @@
 # Поважайте своє
 
+[Як запустити шкільний турнір із входом Google: Railway + Supabase](docs/launch-ru.md)
+
 Увімкни «Касету» SadSvit, якщо шукаєш щось для плейліста з Платиною. Відкрий Geek Journal, якщо любиш довгі розбори кіно. У каталозі 14 таких пар: музика, YouTube, TikTok і Reels, Instagram, мистецтво, ігри та стріми.
 
 ![Головний екран застосунку](docs/screens/desktop-home.png)

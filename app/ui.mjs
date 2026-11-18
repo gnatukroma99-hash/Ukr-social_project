@@ -2,12 +2,21 @@ import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { arcadeItems } from './data.mjs';
 import { dayAt, validMonth, safeUrl } from './engine.mjs';
-import { store, persist, state, session, connect, disconnect, clubApi, refresh, refreshCatalog, rename, startQuestion, submitAnswer, toggleSaved } from './state.mjs';
+import { store, persist, state, session, connect, authAction, disconnect, clubApi, refresh, refreshCatalog, rename, startQuestion, submitAnswer, toggleSaved } from './state.mjs';
 import { shell, home, category, savedView, quests, arcadeView, rankView, esc, eyebrow } from './views.mjs';
 import { profile, authors, menuBody, supportBody, publicIssue } from './community.mjs';
 import { icon } from './icons.mjs';
 
 const root = document.querySelector('#shell'), toast = document.querySelector('#toast');
+let authTarget=null;
+function tournamentRank(){
+  const date=new Intl.DateTimeFormat('uk',{timeZone:'Europe/Kyiv',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(session().end);
+  return `<div class="page-head">${eyebrow('Шкільний турнір')}<h1>${scores?.closed?'Підсумки турніру':'Рейтинг турніру'}</h1><p>Приймаємо відповіді до ${esc(date)} за Києвом.</p></div><section class="panel"><button class="btn ghost" data-act="rank-refresh">Оновити таблицю</button>${rankError?`<p>${esc(rankError)}</p>`:!scores?'<p>Завантажуємо бали…</p>':`<p>Учасників: ${scores.total}. Твоє місце: ${scores.mine?.rank??'ще немає відповіді'}.</p><div class="table-row table-head"><span>Місце</span><span>Гравець</span><span>Бали</span></div>${scores.rows.map(r=>`<div class="table-row ${r.id===state().player.id?'mine':''}"><span>${r.rank}</span><b>${esc(r.name)}</b><strong>${r.points}</strong></div>`).join('')}`}</section>`;
+}
+function signIn(step='start'){
+  const email=authTarget.email && step==='start'?'<form id="email-start" class="form"><label>Або введи свою пошту<input name="email" type="email" required></label><button class="btn ghost">Отримати код у листі</button></form>':'';
+  showModal('Вхід у турнір',step==='start'?`<p class="muted">Бали з телефона й ПК зберігаємо в одному профілі.</p><button class="btn primary" data-act="google">Увійти через Google</button>${email}`:`<form class="form" id="cup-code"><label>${step==='google'?'Скопіюй код зі сторінки після входу Google й встав сюди.':'Введи код із листа.'}<input name="code" required autocomplete="one-time-code" spellcheck="false"></label><button class="btn primary">Увійти</button></form>`,'Реєстрація');
+}
 let task=null, answer=null, busy=false, host=null, queue=null, reveal=false, game=null, ticker=0, gameTouch=null;
 let month=dayAt().slice(0,7), scores=null, rankError='', rankSerial=0, modal=null, toastTimer=0, lastDay=dayAt();
 const route = () => { const [page='home', value='']=(location.hash.slice(1)||'home').split('/'); return {page, value}; };
@@ -15,14 +24,15 @@ function notify(message) { clearTimeout(toastTimer);const inside=modal?.querySel
 function draw(focus=false) {
   const {page,value}=route();
   const content = page==='cat'?category(value):page==='saved'?savedView():page==='quests'?quests(task,answer):page==='arcade'?arcadeView(game):page==='rank'?rankView(month,scores,rankError):page==='profile'?profile(host,queue,reveal):page==='authors'?authors():home();
-  root.innerHTML=shell(page,content);
+  root.innerHTML=shell(page,page==='rank'&&session()?.tournament?tournamentRank():content);
+  if(page==='profile'&&session()?.tournament){const panel=root.querySelector('.info-panel');panel.innerHTML=`${eyebrow('Шкільний турнір')}<h2>Учасник: ${esc(state().player.name)}</h2><p>На іншому пристрої увійди в той самий акаунт.</p><a class="btn primary" href="#rank">Відкрити рейтинг</a><button class="btn ghost" data-act="disconnect">Вийти з турніру</button>`;}
   document.title=`${root.querySelector('h1')?.textContent.replace(/\s+/g,' ').trim() || 'Огляд'} · Своє`;
   if(focus){ const main=document.querySelector('#main'); main.focus({preventScroll:true}); window.scrollTo(0,0); }
 }
 async function loadRank() {
   const token=++rankSerial; scores=null; rankError=''; draw();
   if(!session()) return;
-  try { const data=await clubApi(`/api/leaderboard?month=${month}`); if(token===rankSerial) scores=data; }
+  try { const data=await clubApi(session().tournament?'/api/tournament':`/api/leaderboard?month=${month}`); if(token===rankSerial) scores=data; }
   catch(e){ if(token===rankSerial) rankError=e.message; }
   if(token===rankSerial && route().page==='rank') draw();
 }
@@ -94,9 +104,10 @@ document.addEventListener('click',async e=>{
   if(act==='reveal'){reveal=!reveal;draw();return;}
   if(act==='draft'){const form=document.querySelector('#support-form');if(form){store.draft=Object.fromEntries(new FormData(form));persist();notify('Чернетку збережено на цьому пристрої.');}return;}
   await guarded(el,async()=>{
+    if(act==='google'){const {url}=await authAction(authTarget,'google');authTarget.method='code';signIn('google');await openUrl(url);return;}
     if(act==='start'){const t=await startQuestion();if(route().page==='quests'){task=t;answer=null;draw(true);}return;}
     if(act==='answer'&&task&&!answer){const t=task;const a=await submitAnswer(t,t.question.choices[Number(el.dataset.index)]);if(task===t)answer=a;draw();return;}
-    if(act==='disconnect'){disconnect();reveal=false;scores=null;draw();notify('Особистий режим увімкнено.');return;}
+    if(act==='disconnect'){if(session()?.tournament){await clubApi('/api/auth/logout','POST',{}).catch(()=>{});delete store.sessions[store.active];}disconnect();reveal=false;scores=null;draw();notify('Особистий режим увімкнено.');return;}
     if(act==='host-start'){host=await window.svoieClub.start();draw();await connect(host.local,state().player.name);draw();notify('Клуб запущено. Адресу для телефона вказано в профілі.');return;}
     if(act==='host-stop'){host=await window.svoieClub.stop();if(store.active===host.local)disconnect();queue=null;draw();notify('Клуб зупинено. Результати збережено.');return;}
     if(act==='review'){queue=await window.svoieClub.queue();draw();return;}
@@ -105,11 +116,13 @@ document.addEventListener('click',async e=>{
 });
 
 document.addEventListener('submit',e=>{
-  const form=e.target;if(!['name-form','connect-form','support-form'].includes(form.id))return;e.preventDefault();
+  const form=e.target;if(!['name-form','connect-form','support-form','cup-code','email-start'].includes(form.id))return;e.preventDefault();
   const body=Object.fromEntries(new FormData(form));
   void guarded(e.submitter||form.querySelector('button[type="submit"]'),async()=>{
     if(form.id==='name-form'){await rename(body.name);draw();notify('Псевдонім збережено.');return;}
-    if(form.id==='connect-form'){await connect(body.origin,body.name,body.code);draw();notify('Ти у клубі!');return;}
+    if(form.id==='connect-form'){const target=await connect(body.origin,body.name,body.code);if(target){authTarget=target;signIn();return;}draw();notify('Ти у клубі!');return;}
+    if(form.id==='email-start'){authTarget.address=body.email.trim();await authAction(authTarget,'send',{email:authTarget.address});authTarget.method='otp';signIn('otp');return;}
+    if(form.id==='cup-code'){await authAction(authTarget,authTarget.method,{email:authTarget.address,code:body.code.trim()});authTarget=null;closeModal();draw();notify('Ти у турнірі.');return;}
     if(body.type==='pair'&&!safeUrl(body.url))throw Error('Посилання на автора має починатися з https://');
     store.draft=body;persist();
     if(session()){await clubApi('/api/support','POST',body);store.draft=null;persist();closeModal();notify('Надіслано модератору клубу.');}
