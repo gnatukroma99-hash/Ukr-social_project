@@ -1,0 +1,40 @@
+name: Windows portable release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - run: npm run windows
+      - name: Archive portable app
+        shell: pwsh
+        run: |
+          7z a -tzip -mx=7 release/Povazhaite-Svoie-Windows-x64.zip ./release/PovazhaiteSvoie-win32-x64
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Povazhaite-Svoie-Windows-x64
+          path: release/Povazhaite-Svoie-Windows-x64.zip
+      - name: Publish downloads on version tags
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$env:GITHUB_REF_NAME" './release/Povazhaite-Svoie-Windows-x64.zip' './downloads/Povazhaite-Svoie-Android.apk' --title "Поважайте своє $env:GITHUB_REF_NAME" --notes "Android: встановіть APK. Windows x64: розпакуйте ZIP і запустіть PovazhaiteSvoie.exe."
