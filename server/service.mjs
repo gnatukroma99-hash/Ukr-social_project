@@ -181,6 +181,11 @@ export function makeService({ database, now = Date.now } = {}) {
       if (!res.headersSent && !res.destroyed) send(error.status || 500, { error: error.status ? error.message : 'Сервер не зміг завершити дію.' });
     }
   });
+  // Administrative actions are available only to the host process, never over HTTP.
+  service.moderation = {
+    list: () => db.prepare("SELECT n.id,n.type,n.data,n.priority,p.name FROM notes n JOIN players p ON p.id=n.player WHERE n.state='pending' ORDER BY n.priority DESC,n.at LIMIT 100").all().map(row => ({ ...row, data: JSON.parse(row.data) })),
+    decide: (id, approved) => db.prepare("UPDATE notes SET state=? WHERE state='pending' AND id=?").run(approved ? 'approved' : 'rejected', id).changes === 1,
+  };
   service.on('close', () => db.close());
   return service;
 }

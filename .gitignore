@@ -1,6 +1,7 @@
 node_modules/
 release/
 .cache/
+app/bundle.js
 .env
 server/data/
 *.sqlite

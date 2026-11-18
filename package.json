@@ -6,12 +6,15 @@
   "type": "module",
   "main": "desktop/main.cjs",
   "scripts": {
+    "build:ui": "node tools/ui.mjs",
+    "prestart": "npm run build:ui",
     "start": "electron .",
     "server": "node server/index.mjs",
     "test": "node --test",
+    "prewindows": "npm run build:ui",
     "windows": "node tools/windows.mjs",
-    "android:sync": "cap sync android",
-    "ios:sync": "cap sync ios"
+    "android:sync": "npm run build:ui && cap sync android",
+    "ios:sync": "npm run build:ui && cap sync ios && node tools/fix-spm.mjs"
   },
   "engines": {
     "node": ">=22.13.0"

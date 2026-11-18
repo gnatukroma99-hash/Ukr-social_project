@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Поважайте своє</string>
+    <string name="title_activity_main">Поважайте своє</string>
+    <string name="package_name">ua.povazhaite.svoie</string>
+    <string name="custom_url_scheme">ua.povazhaite.svoie</string>
+</resources>
