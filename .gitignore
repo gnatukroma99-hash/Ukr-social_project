@@ -1,0 +1,16 @@
+node_modules/
+release/
+.cache/
+.env
+server/data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.jks
+*.keystore
+android/capacitor-cordova-android-plugins/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+ios/App/App/public/
+ios/App/App/capacitor.config.json

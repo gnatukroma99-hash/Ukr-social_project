@@ -1,0 +1,31 @@
+{
+  "name": "povazhaite-svoie",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Поважайте своє — українські автори, щоденні мовні квести й аркада",
+  "type": "module",
+  "main": "desktop/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "server": "node server/index.mjs",
+    "test": "node --test",
+    "windows": "node tools/windows.mjs",
+    "android:sync": "cap sync android",
+    "ios:sync": "cap sync ios"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "dependencies": {
+    "@capacitor/android": "7.6.10",
+    "@capacitor/browser": "^7.0.0",
+    "@capacitor/core": "7.6.10",
+    "@capacitor/ios": "7.6.10"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "7.6.10",
+    "@electron/packager": "20.3.0",
+    "electron": "45.3.4",
+    "esbuild": "^0.28.2"
+  }
+}
