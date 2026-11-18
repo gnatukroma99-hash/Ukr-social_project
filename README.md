@@ -58,4 +58,4 @@ npm start
 | Кольори | `app/style.css`, змінні у `:root` |
 | Правила для текстів | [AGENTS.md](AGENTS.md) · [Stop Slop](.opencode/skills/stop-slop/SKILL.md) |
 
-Ілюстрації й піктограми лежать у `app/assets` та `app/icons.mjs`. Шрифт Manrope: [SIL Open Font License](app/assets/OFL-Manrope.txt).
+[Відкрий іконки в PhotoCraft](design/photocraft/editable). У кожному `.pcraft` можна змінити форму або колір окремої деталі. Застосунок показує PNG із `app/assets/ink/`; [приклад ребуса](docs/screens/riddle.png). Шрифт Manrope: [SIL Open Font License](app/assets/OFL-Manrope.txt).

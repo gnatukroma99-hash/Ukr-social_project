@@ -33,6 +33,7 @@ app.whenReady().then(async()=>{
   await go('profile');await click('[data-act="host-start"]');await wait(hasText('.info-panel','Мій клуб'));
   await go('quests');await click('[data-act="start"]');await wait('document.querySelectorAll(".choice").length===4');await capture('quest');
   for(let i=0;i<5;i++){
+    if(i===2){await wait('document.querySelector(".ink-clue img")?.naturalWidth>0');await capture('riddle');}
     await click('.choice:not([disabled])');await wait('document.querySelector(".answer-note")');
     if(i<4){await click('.quiz-box [data-act="start"]');await wait('document.querySelector(".choice:not([disabled])")');}
   }
