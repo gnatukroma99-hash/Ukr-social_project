@@ -3,6 +3,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { competition } from './tournament.mjs';
 import { categories } from '../app/data.mjs';
 import { DAILY_LIMIT, dayAt, shiftDay, shiftMonth, deckFor, publicQuestion, scoreAnswer, streakEnding, streakBonus, validMonth, safeUrl } from '../app/engine.mjs';
 
@@ -83,8 +84,10 @@ function noteData(body) {
   return { category: body.category, vibe: body.vibe, from: text(body.from, 2, 70), to: text(body.to, 2, 70), description: text(body.description, 8, 350), url, format: 'Вибір спільноти', action: 'Відкрити' };
 }
 
-export function makeService({ database, now = Date.now } = {}) {
+export function makeService({ database, now = Date.now, tournament=null } = {}) {
   const db = openStore(database || ':memory:');
+  const cup=tournament && competition(db,tournament,now);
+  const clock=cup && setInterval(()=>cup.finalize(),1000).unref();
   const rates = new Map(); let finalizedDay = '';
   function limit(key, max, interval = 60000) {
     const time = now(); let item = rates.get(key);
@@ -105,10 +108,20 @@ export function makeService({ database, now = Date.now } = {}) {
       const url = new URL(req.url, 'http://localhost');
       const route = `${req.method} ${url.pathname}`;
       const ip = req.socket.remoteAddress; limit(`request:${ip}`, 900);
-      if (route === 'GET /api/health') return send(200, { service: 'povazhaite-svoie', version: 1 });
+      if (route === 'GET /api/health') return send(200, { service: 'povazhaite-svoie', version: 1, mode:cup?'tournament':'club',end:cup?.end });
       const day = dayAt(now()), month = day.slice(0, 7);
       if (finalizedDay !== day) { finalize(db, month); finalizedDay = day; }
+      if (cup && ['POST /api/auth/send','POST /api/auth/verify'].includes(route)) {
+        const body=await payload(req), email=text(body.email,3,254).toLowerCase();
+        if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))fail(400,'Перевір адресу пошти.');
+        const sending=route.endsWith('/send');limit(`${route}:${ip}`,sending?60:240,3600000);limit(`${route}:${digest(email)}`,sending?1:8,sending?60000:600000);
+        if(sending){await cup.auth.send(email);return send(200,{sent:true});}
+        const code=text(body.code,6,10),name=text(body.name,2,24);if(!/^\d+$/.test(code))fail(400,'Введи цифри з листа.');
+        const subject=await cup.auth.verify(email,code), {token,player}=cup.login(subject,name);
+        return send(200,{token,state:snapshot(db,player,dayAt(now()))});
+      }
       if (route === 'POST /api/players') {
+        if(cup)fail(401,'Для турніру підтвердь свою пошту.');
         limit(`register:${ip}`, 120, 3600000);
         const { name } = await payload(req), clean = text(name, 2, 24), token = randomBytes(32).toString('base64url');
         const player = { id: randomUUID(), name: clean };
@@ -117,8 +130,10 @@ export function makeService({ database, now = Date.now } = {}) {
       }
       if (route === 'GET /api/catalog') return send(200, { pairs: db.prepare("SELECT id,data FROM notes WHERE type='pair' AND state='approved' ORDER BY at DESC LIMIT 300").all().map(row => ({ ...JSON.parse(row.data), id: `community-${row.id}` })) });
       const token = (req.headers.authorization || '').match(/^Bearer ([A-Za-z0-9_-]{43})$/)?.[1];
-      const player = token && db.prepare('SELECT id,name FROM players WHERE hash=?').get(digest(token));
+      const player = cup ? cup.identify(token) : token && db.prepare('SELECT id,name FROM players WHERE hash=?').get(digest(token));
       if (!player) fail(401, 'Не вдалося впізнати профіль на цьому сервері. Перевір код профілю.');
+      if(cup && route==='GET /api/tournament')return send(200,cup.board(player.id));
+      if(cup && route==='POST /api/auth/logout'){cup.logout(token);return send(200,{ok:true});}
       if (route === 'GET /api/me') return send(200, snapshot(db, player, day));
       if (route === 'PATCH /api/me') {
         const name = text((await payload(req)).name, 2, 24);
@@ -127,6 +142,7 @@ export function makeService({ database, now = Date.now } = {}) {
       }
       if (route === 'POST /api/start') {
         const body = await payload(req);
+        if(cup)cup.allowed();
         if (body.day !== day) fail(409, 'У Києві вже новий день. Онови завдання.');
         const slot = answersFor(db, player.id, day).length;
         if (slot >= DAILY_LIMIT) fail(409, 'На сьогодні всі п’ять завдань виконано.');
@@ -141,13 +157,14 @@ export function makeService({ database, now = Date.now } = {}) {
           const existing = answersFor(db, player.id, day);
           const replay = existing.find(item => item.id === body.id);
           if (replay) return replay; // Retrying a lost response cannot earn points twice.
+          const received=cup?cup.allowed():now();
           const slot = existing.length, q = deckFor(day)[slot];
           if (!q || q.id !== body.id || !q.choices.includes(body.choice)) fail(409, 'Це завдання вже змінилося. Онови прогрес.');
           const start = db.prepare('SELECT at FROM starts WHERE player=? AND day=? AND slot=?').get(player.id, day, slot);
           if (!start) fail(409, 'Спершу відкрий завдання.');
           const bonus = slot + 1 === DAILY_LIMIT ? streakBonus(streakEnding(shiftDay(day, -1), completed(db, player.id)) + 1) : 0;
           const a = scoreAnswer(q, body.choice, Math.max(0, now() - start.at), bonus);
-          db.prepare('INSERT INTO answers VALUES (?,?,?,?,?,?,?,?,?,?,?,?)').run(player.id, day, slot, q.id, a.choice, +a.correct, a.expected, a.explanation, a.speed, a.bonus, a.points, now());
+          db.prepare('INSERT INTO answers VALUES (?,?,?,?,?,?,?,?,?,?,?,?)').run(player.id, day, slot, q.id, a.choice, +a.correct, a.expected, a.explanation, a.speed, a.bonus, a.points, received);
           return a;
         });
         return send(200, { answer, state: snapshot(db, player, day) });
@@ -186,6 +203,6 @@ export function makeService({ database, now = Date.now } = {}) {
     list: () => db.prepare("SELECT n.id,n.type,n.data,n.priority,p.name FROM notes n JOIN players p ON p.id=n.player WHERE n.state='pending' ORDER BY n.priority DESC,n.at LIMIT 100").all().map(row => ({ ...row, data: JSON.parse(row.data) })),
     decide: (id, approved) => db.prepare("UPDATE notes SET state=? WHERE state='pending' AND id=?").run(approved ? 'approved' : 'rejected', id).changes === 1,
   };
-  service.on('close', () => db.close());
+  service.on('close', () => {if(clock)clearInterval(clock);db.close();});
   return service;
 }
