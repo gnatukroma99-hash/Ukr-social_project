@@ -11,7 +11,7 @@ const root = document.querySelector('#shell'), toast = document.querySelector('#
 let task=null, answer=null, busy=false, host=null, queue=null, reveal=false, game=null, ticker=0, gameTouch=null;
 let month=dayAt().slice(0,7), scores=null, rankError='', rankSerial=0, modal=null, toastTimer=0, lastDay=dayAt();
 const route = () => { const [page='home', value='']=(location.hash.slice(1)||'home').split('/'); return {page, value}; };
-function notify(message) { clearTimeout(toastTimer); toast.textContent=String(message); toast.hidden=false; toastTimer=setTimeout(()=>{toast.hidden=true;},4400); }
+function notify(message) { clearTimeout(toastTimer);const inside=modal?.querySelector('[data-status]');if(inside){inside.hidden=false;inside.textContent=String(message);inside.scrollIntoView({block:'nearest'});return;}toast.textContent=String(message); toast.hidden=false; toastTimer=setTimeout(()=>{toast.hidden=true;},4400); }
 function draw(focus=false) {
   const {page,value}=route();
   const content = page==='cat'?category(value):page==='saved'?savedView():page==='quests'?quests(task,answer):page==='arcade'?arcadeView(game):page==='rank'?rankView(month,scores,rankError):page==='profile'?profile(host,queue,reveal):page==='authors'?authors():home();
@@ -49,7 +49,7 @@ function closeModal(){ if(!modal) return; const d=modal;modal=null;document.body
 function showModal(title,body,kicker='Спільнота') {
   if(!modal){restoreFocus=document.activeElement;modal=document.createElement('dialog');modal.className='dialog';modal.setAttribute('aria-labelledby','dialog-title');document.body.appendChild(modal);document.body.classList.add('modal-open');
     modal.addEventListener('cancel',e=>{e.preventDefault();closeModal();});modal.addEventListener('click',e=>{if(e.target!==modal)return;const r=modal.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeModal();});}
-  modal.innerHTML=`<div class="dialog-head"><div>${eyebrow(kicker)}<h2 id="dialog-title">${esc(title)}</h2></div><button type="button" class="icon-btn" aria-label="Закрити" data-act="close">${icon('close',19)}</button></div>${body}`;
+  modal.innerHTML=`<div class="dialog-head"><div>${eyebrow(kicker)}<h2 id="dialog-title">${esc(title)}</h2></div><button type="button" class="icon-btn" aria-label="Закрити" data-act="close">${icon('close',19)}</button></div>${body}<p class="notice" role="status" data-status hidden></p>`;
   if(!modal.open){if(typeof modal.showModal==='function')modal.showModal();else modal.setAttribute('open','');}
 }
 function support(tab='feedback'){showModal('Підтримка',supportBody(tab,route().page==='cat'?route().value:'youtube'));}
@@ -78,7 +78,7 @@ async function guarded(el,action) {
 }
 document.addEventListener('click',async e=>{
   const external=e.target.closest('[data-external]');if(external){e.preventDefault();try{await openUrl(external.href);}catch(err){notify(err.message);}return;}
-  const el=e.target.closest('[data-act]');if(!el){if(modal&&e.target.closest('a[href^="#"]'))closeModal();if(e.target.closest('.skip-link')){e.preventDefault();document.querySelector('#main')?.focus();}return;}
+  const el=e.target.closest('[data-act]');if(!el){if(e.target.closest('.hero a[href="#cat/music"]')){store.vibe='ua';persist();}if(modal&&e.target.closest('a[href^="#"]'))closeModal();if(e.target.closest('.skip-link')){e.preventDefault();document.querySelector('#main')?.focus();}return;}
   e.preventDefault();const act=el.dataset.act;
   if(act==='close'){closeModal();return;}
   if(act==='menu'){showModal('Меню',menuBody(),'Навігація');return;}

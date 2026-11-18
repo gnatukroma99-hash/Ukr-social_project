@@ -27,9 +27,14 @@ function hash(seed) {
 
 export function deckFor(date) {
   const distance = Math.floor((Date.parse(`${date}T00:00:00Z`) - Date.UTC(2026, 0, 1)) / MS_DAY);
-  const pack = ((distance % packs.length) + packs.length) % packs.length;
-  return packs[pack].map(({ distractors, ...question }, slot) => {
-    const id = `p${pack + 1}-${slot + 1}`;
+  const wrap = (n, len) => ((n % len) + len) % len;
+  const bank = packs.flatMap((p, i) => p.map((question, j) => ({ ...question, id: `p${i + 1}-${j + 1}` })));
+  const groups = Object.fromEntries(['translate','context','riddle'].map(kind => [kind, bank.filter(q => q.kind === kind)]));
+  const cycle = Math.floor(distance / packs.length);
+  function pick(kind, stride, offset) { const group = groups[kind]; return group[wrap(distance * stride + offset, group.length)]; }
+  // Revisit vocabulary without replaying the same five-card pack every week.
+  const daily = [pick('translate',2,0), pick('context',1,cycle), pick('riddle',2,cycle*3), pick('translate',2,1), pick('riddle',2,cycle*3+1)];
+  return daily.map(({ distractors, id, ...question }) => {
     const choices = [question.correct, ...distractors].sort((a, b) => hash(`${date}/${id}/${a}`) - hash(`${date}/${id}/${b}`));
     return { ...question, id, choices };
   });
