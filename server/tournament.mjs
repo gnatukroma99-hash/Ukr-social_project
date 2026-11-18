@@ -3,7 +3,7 @@ import { randomBytes, randomUUID, createHash } from 'node:crypto';
 const hash = token => createHash('sha256').update(token).digest('hex');
 const reject = (status, message) => { throw Object.assign(new Error(message), { status }); };
 
-export function emailProvider(url, key) {
+export function emailProvider(url, key, origin) {
   const base = new URL(url);
   if (base.protocol !== 'https:' || !key) throw Error('Set SUPABASE_URL (HTTPS) and SUPABASE_PUBLISHABLE_KEY.');
   async function post(path, body) {
@@ -12,6 +12,10 @@ export function emailProvider(url, key) {
     return res.json();
   }
   return {
+    google(challenge){
+      const dest=new URL('auth/v1/authorize',base.origin);dest.search=new URLSearchParams({provider:'google',redirect_to:new URL('/auth/finish',origin).href,code_challenge:challenge,code_challenge_method:'s256'});return dest.href;
+    },
+    async exchange(code,verifier){const {user}=await post('token?grant_type=pkce',{auth_code:code,code_verifier:verifier});if(!user?.id||!user.email_confirmed_at)reject(401,'Не вдалося підтвердити акаунт Google.');return user.id;},
     send: email => post('otp',{email,create_user:true}),
     verify: async (email,token) => {
       const {user}=await post('verify',{email,token,type:'email'});
@@ -23,7 +27,9 @@ export function emailProvider(url, key) {
 
 export function tournamentFromEnv(env=process.env) {
   if (env.CLUB_MODE !== 'tournament') return null;
-  return { start:env.TOURNAMENT_START || '2026-11-18T00:00:00+02:00', end:env.TOURNAMENT_END || '2026-11-25T00:00:00+02:00', auth:emailProvider(env.SUPABASE_URL,env.SUPABASE_PUBLISHABLE_KEY) };
+  const origin=env.PUBLIC_ORIGIN || (env.RAILWAY_PUBLIC_DOMAIN && `https://${env.RAILWAY_PUBLIC_DOMAIN}`);
+  if(!origin||new URL(origin).protocol!=='https:')throw Error('Generate a public HTTPS domain and set PUBLIC_ORIGIN.');
+  return { start:env.TOURNAMENT_START || '2026-11-18T00:00:00+02:00', end:env.TOURNAMENT_END || '2026-11-25T00:00:00+02:00', email:env.ALLOW_EMAIL_OTP==='true', auth:emailProvider(env.SUPABASE_URL,env.SUPABASE_PUBLISHABLE_KEY,origin) };
 }
 
 export function competition(db, cfg, now) {

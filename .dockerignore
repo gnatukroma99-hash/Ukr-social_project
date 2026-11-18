@@ -1,0 +1,7 @@
+**
+!app/
+!app/data.mjs
+!app/engine.mjs
+!server/
+!server/*.mjs
+!Dockerfile

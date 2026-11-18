@@ -108,10 +108,22 @@ export function makeService({ database, now = Date.now, tournament=null } = {}) 
       const url = new URL(req.url, 'http://localhost');
       const route = `${req.method} ${url.pathname}`;
       const ip = req.socket.remoteAddress; limit(`request:${ip}`, 900);
-      if (route === 'GET /api/health') return send(200, { service: 'povazhaite-svoie', version: 1, mode:cup?'tournament':'club',end:cup?.end });
+      if (route === 'GET /api/health') return send(200, { service: 'povazhaite-svoie', version: 1, mode:cup?'tournament':'club',end:cup?.end,email:!!tournament?.email });
+      if(cup && route==='GET /auth/finish'){
+        const code=url.searchParams.get('code')||'';const ok=/^[a-zA-Z0-9_-]{16,256}$/.test(code);
+        res.writeHead(ok?200:400,{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff'});
+        return res.end(ok?`Скопіюй цей одноразовий код і встав у «Поважайте своє» на пристрої, з якого почав вхід:\n\n${code}\n`:'Не отримали код. Повернися в застосунок і почни вхід знову.');
+      }
       const day = dayAt(now()), month = day.slice(0, 7);
       if (finalizedDay !== day) { finalize(db, month); finalizedDay = day; }
-      if (cup && ['POST /api/auth/send','POST /api/auth/verify'].includes(route)) {
+      if(cup && route==='POST /api/auth/google'){
+        const {challenge}=await payload(req);if(typeof challenge!=='string'||!/^[\w-]{43}$/.test(challenge))fail(400,'Почни вхід знову.');return send(200,{url:cup.auth.google(challenge)});
+      }
+      if(cup && route==='POST /api/auth/google/verify'){
+        limit(`oauth:${ip}`,240,3600000);const body=await payload(req),name=text(body.name,2,24),code=text(body.code,16,256),verifier=text(body.verifier,43,128);
+        const subject=await cup.auth.exchange(code,verifier),{token,player}=cup.login(subject,name);return send(200,{token,state:snapshot(db,player,dayAt(now()))});
+      }
+      if (cup && tournament.email && ['POST /api/auth/send','POST /api/auth/verify'].includes(route)) {
         const body=await payload(req), email=text(body.email,3,254).toLowerCase();
         if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))fail(400,'Перевір адресу пошти.');
         const sending=route.endsWith('/send');limit(`${route}:${ip}`,sending?60:240,3600000);limit(`${route}:${digest(email)}`,sending?1:8,sending?60000:600000);

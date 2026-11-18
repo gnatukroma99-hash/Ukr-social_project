@@ -54,6 +54,7 @@ export async function connect(input, name, code = '') {
   const health = await request(origin, '/api/health');
   if (health.service !== 'povazhaite-svoie' || health.version !== 1) throw Error('За цією адресою немає сумісного клубу.');
   let token = code || store.sessions[origin]?.token; let current;
+  if(health.mode==='tournament')return {origin,name,email:!!health.email,end:health.end};
   if (token) current = await request(origin, '/api/me', 'GET', null, token);
   else { const created = await request(origin, '/api/players', 'POST', { name }); current = created.state; token = created.token; }
   store.sessions[origin] = { token, state: current, pairs: store.sessions[origin]?.pairs || [] };
@@ -62,6 +63,18 @@ export async function connect(input, name, code = '') {
 }
 
 export function disconnect() { store.active = ''; persist(); }
+export async function authAction(target, step, values={}){
+  if(step==='google'){
+    const b64=a=>btoa(String.fromCharCode(...new Uint8Array(a))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+    target.verifier=b64(crypto.getRandomValues(new Uint8Array(48)));
+    const challenge=b64(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(target.verifier)));
+    return request(target.origin,'/api/auth/google','POST',{challenge});
+  }
+  if(step==='send')return request(target.origin,'/api/auth/send','POST',{email:values.email});
+  const r=await request(target.origin,'/api/auth/'+(step==='code'?'google/verify':'verify'),'POST',{name:target.name,verifier:target.verifier,...values});
+  store.active=target.origin;store.sessions[target.origin]={token:r.token,state:r.state,pairs:[],tournament:true,end:target.end};persist();
+  await refreshCatalog().catch(()=>{});
+}
 export async function clubApi(path, method, body) {
   if (!session()) throw Error('Спершу приєднайся до клубу в профілі.');
   return request(store.active, path, method, body, session().token);
