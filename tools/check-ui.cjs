@@ -57,9 +57,10 @@ app.whenReady().then(async()=>{
     const photos=await js(`[...document.querySelectorAll('#branches .category')].map(a=>{
       const img=a.querySelector('img'),box=img.getBoundingClientRect(),title=a.querySelector('h3').getBoundingClientRect();
       return {id:a.hash.split('/')[1],file:img.src.split('/').pop(),square:Math.abs(box.width-box.height)<1,
+        arrow:!!a.querySelector('.direction-title .ico'),counter:/[0-9]{2}\\s*\\/\\s*06/.test(a.textContent),
         readable:box.width>=90 && (box.right<=title.left+1 || box.bottom<=title.top+1)};
     })`);
-    for(const p of photos)assert.ok(p.file===`${p.id}.webp`&&p.square&&p.readable,JSON.stringify(p));
+    for(const p of photos)assert.ok(p.file===`${p.id}.webp`&&p.square&&p.readable&&p.arrow&&!p.counter,JSON.stringify(p));
   }
   async function checkCatalogImages(){
     const rows=await js(`(async()=>{

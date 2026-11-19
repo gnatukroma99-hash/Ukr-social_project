@@ -24,10 +24,10 @@ export function shell(page, content) {
     <nav class="mobile-nav" aria-label="Нижня навігація">${navLinks(active)}<button class="navlink ${['profile','authors','saved'].includes(page)?'current':''}" data-act="menu">${icon('dots',18)}<span>Меню</span></button></nav>`;
 }
 
-function directionCard(c, index) {
+function directionCard(c) {
   return `<a class="category ${c.color}" href="#cat/${c.id}">
     <img class="direction-cover" src="./assets/directions/${c.id}.webp" alt="" width="480" height="480">
-    <div class="direction-details"><div class="direction-meta" aria-hidden="true"><span>${String(index+1).padStart(2,'0')} / 06</span>${icon('upRight',16)}</div><h3>${esc(c.name)}</h3><p>${esc(c.copy)}</p></div>
+    <div class="direction-details"><div class="direction-title"><h3>${esc(c.name)}</h3>${icon('upRight',16)}</div><p>${esc(c.copy)}</p></div>
   </a>`;
 }
 
