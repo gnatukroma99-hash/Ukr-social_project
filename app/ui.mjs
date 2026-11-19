@@ -55,7 +55,10 @@ function routeChanged() {
 }
 window.addEventListener('hashchange',routeChanged);
 document.addEventListener('load',e=>{
-  if(e.target.matches?.('.pair-preview-release')&&e.target.naturalWidth)e.target.closest('.pair-preview-visual')?.classList.add('has-release');
+  const img=e.target;
+  if(!img.matches?.('.pair-preview-release')||img.naturalWidth<160||img.naturalHeight<160)return;
+  img.closest('.pair-preview-visual')?.classList.add('has-release');
+  img.removeAttribute('aria-hidden');
 },true);
 
 async function openUrl(raw) {

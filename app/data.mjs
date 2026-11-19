@@ -20,7 +20,7 @@ export const starterPairs = [
     ...pair('mu-1', 'music', 'Платина', 'SadSvit', 'ua', 'Постпанк · інді', 'У треках Платини коротка мелодія йде по колу поверх біту. У «Касеті» SadSvit будує пісню навколо кількох басових нот.', 'https://www.youtube.com/watch?v=EGLoIaHwKfE', 'Слухати «Касету»'),
     preview: {
       cover: 'sadsvit-kaseta.webp', title: '«Касета»', meta: 'YouTube · 2:25', cue: 'Прислухайся до басу ще до першого рядка.',
-      artwork: { image: 'https://f4.bcbits.com/img/a3772016215_5.jpg', source: 'https://sadsvit.bandcamp.com/track/--2' },
+      artwork: { image: 'https://f4.bcbits.com/img/a3772016215_5.jpg', source: 'https://sadsvit.bandcamp.com/track/--2', label: 'Обкладинка на Bandcamp', alt: 'Чорно-білий малюнок касети зі стрічкою' },
     },
   },
   pair('mu-2', 'music', 'Хаски', 'OTOY', 'ua', 'Реп · хіп-хоп', 'Увімкни «Пекло» і прислухайся, як OTOY розставляє наголоси в рядку. А в «На двох» його низькому голосу відповідає KLER.', 'https://music.apple.com/ua/artist/otoy/1525737918', 'Послухати OTOY'),

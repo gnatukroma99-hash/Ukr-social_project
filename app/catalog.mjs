@@ -1,10 +1,11 @@
 import { starterPairs } from './data.mjs';
+import { withRecommendation } from './recommendations.mjs';
 
 // IDs are permanent: a bookmark points at the same author after an update.
 const pair = (id, category, from, fromFormat, to, vibe, format, description, url, action) =>
   ({id, category, from, fromFormat, to, vibe, format, description, url, action});
 
-export const catalog = [...starterPairs,
+const pairs = [...starterPairs,
   pair('yt-4','youtube','Wylsacom','Огляди смартфонів','Andro-news','ua','Техніка · порівняння',
     'Перш ніж купувати телефон, відкрий порівняння двох моделей в Andro-news. На прикладах фото з обох камер помітніше, за що пропонують доплатити.',
     'https://www.youtube.com/@Andronews_official','Дивитися огляди'),
@@ -113,3 +114,5 @@ export const catalog = [...starterPairs,
     'У Sherlock Holmes Chapter One від київської студії Frogwares обійди місце події, а тоді звір власну версію з показами свідків. Тут місто читаєш як детектив.',
     'https://frogwares.com/','Відкрити ігри Frogwares'),
 ];
+
+export const catalog = pairs.map(withRecommendation);

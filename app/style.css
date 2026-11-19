@@ -40,14 +40,15 @@
   height: 100%;
   object-fit: cover;
 }
-.pair-preview-release { visibility: hidden; }
+.pair-preview-release { opacity: 0; }
 .pair-preview-credit { display: none; }
 .pair-preview-visual.has-release .pair-preview-cover { visibility: hidden; }
-.pair-preview-visual.has-release .pair-preview-release { visibility: visible; }
+.pair-preview-visual.has-release .pair-preview-release { opacity: 1; }
 .pair-preview-visual.has-release .pair-preview-credit { display: block; margin-top: 5px; }
 .pair-preview-credit .text-link { min-height: 34px; color: var(--violet); font-size: .78rem; }
-.pair-preview-body { min-width: 0; }
+.pair-preview-body { min-width: 0; overflow-wrap: anywhere; }
 .pair-preview-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.pair-preview-head > div { min-width: 0; }
 .pair-preview-head h3 { font-size: clamp(2.25rem, 4.6vw, 4.1rem); margin-top: 2px; }
 .pair-preview-head .icon-btn { flex: none; width: 44px; height: 44px; }
 .pair-preview-context { display: flex; align-items: center; flex-wrap: wrap; gap: 5px 12px; margin: 9px 0 14px; }

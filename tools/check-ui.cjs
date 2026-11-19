@@ -11,10 +11,12 @@ const watchdog=setTimeout(()=>{console.error('Renderer check exceeded 45 seconds
 app.whenReady().then(async()=>{
   registerClub();const window=createWindow();window.setContentSize(1280,920);
   const web=window.webContents,errors=[];web.setBackgroundThrottling(false);
-  const artworkUrl='https://f4.bcbits.com/img/a3772016215_5.jpg', liveArtwork=process.env.SVOIE_LIVE_ARTWORK==='1';
-  if(!liveArtwork)web.session.webRequest.onBeforeRequest({urls:[artworkUrl]},(_details,reply)=>reply({cancel:true}));
+  const {catalog}=await import('../app/catalog.mjs');
+  const artworkUrls=new Set(catalog.flatMap(p=>p.preview.artwork?[p.preview.artwork.image]:[]));
+  const liveArtwork=process.env.SVOIE_LIVE_ARTWORK==='1';
+  if(!liveArtwork)web.session.webRequest.onBeforeRequest({urls:['https://*/*']},(details,reply)=>reply({cancel:artworkUrls.has(details.url)}));
   web.on('console-message',(e)=>{
-    if(e.level==='error'&&!(!liveArtwork&&e.sourceId===artworkUrl&&e.message.includes('ERR_BLOCKED_BY_CLIENT')))errors.push(e.message);
+    if(e.level==='error'&&!(!liveArtwork&&artworkUrls.has(e.sourceId)&&e.message.includes('ERR_BLOCKED_BY_CLIENT')))errors.push(e.message);
   });
   await new Promise(resolve=>web.once('did-finish-load',resolve));
   console.log('Renderer loaded');
@@ -28,6 +30,7 @@ app.whenReady().then(async()=>{
   const hasText=(sel,text)=>`document.querySelector(${JSON.stringify(sel)})?.textContent.includes(${JSON.stringify(text)})`;
   const checkCover=async online=>{
     await wait('document.querySelector(".pair-preview-cover")?.naturalWidth===960');
+    await js('document.querySelector(".pair-preview-release").loading="eager"');
     await wait('document.querySelector(".pair-preview-release")?.complete');
     if(online){
       await wait('document.querySelector(".pair-preview-visual.has-release .pair-preview-release")?.naturalWidth===700');
@@ -52,7 +55,7 @@ app.whenReady().then(async()=>{
     mkdirSync(screen,{recursive:true});await js('document.fonts.ready.then(()=>true)');
     const rect=selector?await js(`(async()=>{
       const el=document.querySelector(${JSON.stringify(selector)});
-      await Promise.all(Array.from(el.querySelectorAll('img'),img=>getComputedStyle(img).visibility==='visible'?img.decode():null));
+      await Promise.all(Array.from(el.querySelectorAll('img'),img=> !img.hasAttribute('aria-hidden') && getComputedStyle(img).visibility==='visible'?img.decode():null));
       el.scrollIntoView({block:'center',behavior:'instant'});
       await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
       const r=el.getBoundingClientRect();
@@ -64,7 +67,7 @@ app.whenReady().then(async()=>{
   await click('a[href="#cat/music"]');await wait(hasText('.pairs','SadSvit'));
   const comparison='.pair-preview details';
   await checkCover(liveArtwork);
-  assert.equal(await js('document.querySelectorAll(".pair-preview").length'),1);
+  assert.equal(await js('document.querySelectorAll(".pair-preview").length'),catalog.filter(p=>p.category==='music'&&p.vibe==='ua').length);
   assert.equal(await js('document.querySelector(".pair-preview-listen").href'),'https://www.youtube.com/watch?v=EGLoIaHwKfE');
   assert.equal(await js(`document.querySelector('${comparison}').open`),false);
   await click(`${comparison} summary`);await wait(`document.querySelector('${comparison}').open`);
@@ -72,7 +75,6 @@ app.whenReady().then(async()=>{
   await click('.pair-preview [data-act="save"]');
   assert.ok(await js(`document.querySelector('${comparison}').open && document.querySelector('.pair-preview [aria-pressed="true"]')!==null`));
   await click('[data-value="world"]');await wait(hasText('.pairs','DakhaBrakha'));
-  const {catalog}=await import('../app/catalog.mjs');
   assert.equal(await js('document.querySelectorAll("article.pair").length'),catalog.filter(p=>p.category==='music'&&p.vibe==='world').length);
   assert.ok(!await js(hasText('.pairs','SadSvit')));
   await click('[data-value="all"]');await capture('music');await go('saved');await wait(hasText('.pair-preview','SadSvit'));
@@ -96,6 +98,16 @@ app.whenReady().then(async()=>{
   const phoneWidth=await js('innerWidth');assert.ok(phoneWidth>=360&&phoneWidth<=420,`Expected phone viewport, got ${phoneWidth}px`);
   assert.ok(await js('document.documentElement.scrollWidth<=innerWidth && document.querySelector(".pair-preview-cover").getBoundingClientRect().bottom < document.querySelector(".pair-preview h3").getBoundingClientRect().top'));
   await capture('kaseta-mobile','.pair-preview');
+  for(const [category,id] of Object.entries({youtube:'yt-1',shorts:'sh-7',instagram:'in-5',art:'ar-7',games:'gm-7'})){
+    await go('cat/'+category);
+    assert.equal(await js('document.querySelectorAll("article.pair-preview").length'),8);
+    assert.ok(await js('document.documentElement.scrollWidth<=innerWidth'));
+    const sel=`article:has([data-pair-compare="${id}"])`;
+    await js(`document.querySelector(${JSON.stringify(sel)}).scrollIntoView({block:'center',behavior:'instant'})`);
+    await wait(`document.querySelector(${JSON.stringify(sel+' .pair-preview-cover')})?.naturalWidth===640`);
+    if(liveArtwork)await wait(`document.querySelector(${JSON.stringify(sel+' .has-release')})`);
+    await capture('catalog-'+category,sel);
+  }
   await go('home');await capture('mobile-home');
   assert.ok(await js('document.documentElement.scrollWidth<=innerWidth'));
   await click('.mobile-nav [data-act="menu"]');await wait('document.querySelector("dialog[open]")');await click('dialog a[href="#authors"]');await wait(hasText('.page-head','Автори'));
