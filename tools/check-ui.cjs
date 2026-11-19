@@ -35,6 +35,15 @@ app.whenReady().then(async()=>{
     }else{
       assert.ok(await js('document.querySelector(".pair-preview-release").naturalWidth===0 && !document.querySelector(".pair-preview-visual.has-release") && getComputedStyle(document.querySelector(".pair-preview-cover")).visibility==="visible" && getComputedStyle(document.querySelector(".pair-preview-credit")).display==="none"'));
     }
+    const media=await js(`(()=>{
+      const frame=document.querySelector('.pair-preview-media');
+      const image=frame.querySelector('.pair-preview-${online?'release':'cover'}');
+      const a=frame.getBoundingClientRect(),b=image.getBoundingClientRect();
+      return {width:a.width,height:a.height,flush:['x','y','width','height'].every(key=>a[key]===b[key]),
+        radius:parseFloat(getComputedStyle(frame).borderTopLeftRadius),clip:getComputedStyle(frame).overflow,
+        padding:getComputedStyle(image).padding,fit:getComputedStyle(image).objectFit};
+    })()`);
+    assert.ok(Math.abs(media.width-media.height)<1 && media.flush && media.radius>0 && media.clip==='hidden' && media.padding==='0px' && media.fit==='cover',JSON.stringify(media));
   };
   await wait('document.querySelectorAll(".category").length===6');
   const screen=process.env.SVOIE_SCREENSHOTS;
