@@ -5,6 +5,7 @@ import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { competition } from './tournament.mjs';
 import { publicPage } from './public-pages.mjs';
+import { removals } from './removals.mjs';
 import { categories } from '../app/data.mjs';
 import { DAILY_LIMIT, dayAt, shiftDay, shiftMonth, deckFor, publicQuestion, scoreAnswer, streakEnding, streakBonus, validMonth, safeUrl } from '../app/engine.mjs';
 
@@ -88,6 +89,7 @@ function noteData(body) {
 export function makeService({ database, now = Date.now, tournament=null } = {}) {
   const db = openStore(database || ':memory:');
   const cup=tournament && competition(db,tournament,now);
+  const removalQueue=removals(db);
   const clock=cup && setInterval(()=>cup.finalize(),1000).unref();
   const rates = new Map(); let finalizedDay = '';
   function limit(key, max, interval = 60000) {
@@ -108,8 +110,16 @@ export function makeService({ database, now = Date.now, tournament=null } = {}) 
       if (req.method === 'OPTIONS') return send(204);
       const url = new URL(req.url, 'http://localhost');
       const route = `${req.method} ${url.pathname}`;
-      if(['GET /','GET /privacy'].includes(route)){res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});return res.end(publicPage(url.pathname));}
+      if(['GET /','GET /privacy','GET /delete-account','GET /delete-account/sent'].includes(route)){res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer'});return res.end(publicPage(url.pathname));}
       const ip = req.socket.remoteAddress; limit(`request:${ip}`, 900);
+      if(route==='POST /delete-account'){
+        limit(`removal:${ip}`,20,3600000);
+        if(!(req.headers['content-type']||'').startsWith('application/x-www-form-urlencoded'))fail(415,'Надішли вебформу.');
+        let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>2048)fail(413,'Надто багато даних.');chunks.push(chunk);}
+        const email=(new URLSearchParams(Buffer.concat(chunks).toString()).get('email')||'').trim().toLowerCase();
+        if(email.length>254||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))fail(400,'Перевір пошту.');
+        removalQueue.request(email,now());res.writeHead(303,{Location:'/delete-account/sent','Cache-Control':'no-store'});return res.end();
+      }
       if (route === 'GET /api/health') return send(200, { service: 'povazhaite-svoie', version: 1, mode:cup?'tournament':'club',end:cup?.end,email:!!tournament?.email });
       if(cup && route==='GET /auth/finish'){
         const code=url.searchParams.get('code')||'';const ok=/^[a-zA-Z0-9_-]{16,256}$/.test(code);

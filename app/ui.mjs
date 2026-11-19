@@ -3,7 +3,7 @@ import { Browser } from '@capacitor/browser';
 import { nextArcadeCard, ROUND_SIZE } from './arcade.mjs';
 import { dayAt, validMonth, safeUrl } from './engine.mjs';
 import { store, persist, state, session, connect, authAction, disconnect, clubApi, refresh, refreshCatalog, rename, startQuestion, submitAnswer, toggleSaved } from './state.mjs';
-import { shell, home, category, savedView, quests, arcadeView, rankView, esc, eyebrow } from './views.mjs';
+import { shell, home, category, savedView, quests, arcadeView, rankView, esc, eyebrow, external } from './views.mjs';
 import { profile, authors, menuBody, supportBody, publicIssue } from './community.mjs';
 import { icon } from './icons.mjs';
 
@@ -26,6 +26,10 @@ function draw(focus=false) {
   const content = page==='cat'?category(value):page==='saved'?savedView():page==='quests'?quests(task,answer):page==='arcade'?arcadeView(game):page==='rank'?rankView(month,scores,rankError):page==='profile'?profile(host,queue,reveal):page==='authors'?authors():home();
   root.innerHTML=shell(page,page==='rank'&&session()?.tournament?tournamentRank():content);
   if(page==='profile'&&session()?.tournament){const panel=root.querySelector('.info-panel');panel.innerHTML=`${eyebrow('Шкільний турнір')}<h2>Учасник: ${esc(state().player.name)}</h2><p>На іншому пристрої увійди в той самий акаунт.</p><a class="btn primary" href="#rank">Відкрити рейтинг</a><button class="btn ghost" data-act="disconnect">Вийти з турніру</button>`;}
+  if(page==='profile'){
+    const base=session()?.tournament&&store.active.startsWith('https://')?store.active:'https://ukr-socialproject-production.up.railway.app';
+    root.querySelector('.info-panel')?.insertAdjacentHTML('beforeend',`<div class="btn-col" style="margin-top:20px">${external(base+'/privacy','Конфіденційність','text-link')}${external(base+'/delete-account','Запит на видалення акаунта турніру','text-link')}</div>`);
+  }
   document.title=`${root.querySelector('h1')?.textContent.replace(/\s+/g,' ').trim() || 'Огляд'} · Своє`;
   if(focus){ const main=document.querySelector('#main'); main.focus({preventScroll:true}); window.scrollTo(0,0); }
 }
