@@ -1,0 +1,17 @@
+Український словник для «Зміни літеру» і «Вгадай слово»
+
+Використано український орфографічний словник Hunspell із LibreOffice,
+створений на основі dict_uk. Автор пакунка: Andriy Rysin, 2007–2017.
+Ліцензія словникових даних: Mozilla Public License 1.1 (MPL-1.1).
+Текст ліцензії: MPL-1.1.txt поруч із цим файлом.
+
+Source, authors and license notice:
+https://github.com/LibreOffice/dictionaries/tree/c0865a85eb67dc377f2cf8e8fe2c4fa9e53f0dcb/uk_UA
+https://github.com/brown-uk/dict_uk/tree/master/distr/hunspell
+
+Modifications for this game, November 2026: expanded the suffix rules,
+selected lowercase Ukrainian words and word forms of 3 to 6 letters,
+removed duplicates, and grouped the results by length in app/lexicon-data.mjs.
+That file is distributed under MPL-1.1. The editable word list and generator:
+https://github.com/gnatukroma99-hash/Ukr-social_project/blob/v0.2.7/app/lexicon-data.mjs
+https://github.com/gnatukroma99-hash/Ukr-social_project/blob/v0.2.7/tools/build-lexicon.py
