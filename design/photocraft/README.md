@@ -22,3 +22,10 @@ python design/photocraft/build_covers.py "/path/to/photocraft-cli" yt-1 --editab
 ```
 
 Друга команда також зберігає шари обраної обкладинки у `editable/cover-yt-1.pcraft`.
+
+«Буквопад» і добірка «Ілюстрації» у «Відкрий кадр» використовують 48 квадратних малюнків з `app/assets/arcade/`. Щоб перегенерувати їх або зберегти шари одного малюнка:
+
+```sh
+python design/photocraft/build_arcade.py "/path/to/photocraft-cli"
+python design/photocraft/build_arcade.py "/path/to/photocraft-cli" hedgehog --editable
+```
