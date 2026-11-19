@@ -54,6 +54,9 @@ function routeChanged() {
   if(page==='cat' && session()) refreshCatalog().then(()=>{if(route().page==='cat')draw();}).catch(()=>{});
 }
 window.addEventListener('hashchange',routeChanged);
+document.addEventListener('load',e=>{
+  if(e.target.matches?.('.pair-preview-release')&&e.target.naturalWidth)e.target.closest('.pair-preview-visual')?.classList.add('has-release');
+},true);
 
 async function openUrl(raw) {
   const url=safeUrl(raw); if(!url) throw Error('Потрібне коректне HTTPS-посилання.');

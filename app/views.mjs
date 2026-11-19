@@ -41,9 +41,16 @@ function pairBookmark(p) {
   return `<button type="button" class="icon-btn ${saved?'is-saved':''}" data-act="save" data-id="${esc(p.id)}" aria-pressed="${saved}" aria-label="${saved?'Вилучити зі збереженого':'Зберегти пару'}">${icon('save',18)}</button>`;
 }
 function previewCard(p) {
-  const { cover, title, meta, cue } = p.preview;
+  const { cover, title, meta, cue, artwork } = p.preview;
+  const releaseImage = safeUrl(artwork?.image);
   return `<article class="pair pair-preview">
-    <img class="pair-preview-cover" src="./assets/covers/${encodeURIComponent(cover)}" width="960" height="640" alt="" decoding="async">
+    <figure class="pair-preview-visual">
+      <div class="pair-preview-media">
+        <img class="pair-preview-cover" src="./assets/covers/${encodeURIComponent(cover)}" width="960" height="640" alt="" decoding="async">
+        ${releaseImage ? `<img class="pair-preview-release" src="${esc(releaseImage)}" width="700" height="700" alt="Чорно-білий малюнок касети зі стрічкою" referrerpolicy="no-referrer" decoding="async">` : ''}
+      </div>
+      ${releaseImage ? `<figcaption class="pair-preview-credit">${external(artwork.source,'Обкладинка на Bandcamp','text-link')}</figcaption>` : ''}
+    </figure>
     <div class="pair-preview-body">
       <div class="pair-preview-head"><div><span class="small-label lime-text">${p.vibe==='ua'?'Український автор':'Наші у світі'}</span><h3>${esc(p.to)}</h3></div>${pairBookmark(p)}</div>
       <div class="pair-preview-context"><span class="pair-preview-source">Звичне: <b>${esc(p.from)}</b></span><span class="format">${esc(p.format)}</span></div>

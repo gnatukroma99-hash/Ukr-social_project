@@ -18,7 +18,10 @@ export const starterPairs = [
   pair('sh-2', 'shorts', 'XO Team', 'D.side Dance Studio', 'world', 'Танці · хореографія', 'У київській студії D.side танцівники знімають групові постановки. Якщо повторюєш рухи з коротких відео, у них можна підглянути цілу зв’язку.', 'https://ua.dside.com.ua/', 'До студії D.side'),
   {
     ...pair('mu-1', 'music', 'Платина', 'SadSvit', 'ua', 'Постпанк · інді', 'У треках Платини коротка мелодія йде по колу поверх біту. У «Касеті» SadSvit будує пісню навколо кількох басових нот.', 'https://www.youtube.com/watch?v=EGLoIaHwKfE', 'Слухати «Касету»'),
-    preview: { cover: 'sadsvit-kaseta.webp', title: '«Касета»', meta: 'YouTube · 2:25', cue: 'Прислухайся до басу ще до першого рядка.' },
+    preview: {
+      cover: 'sadsvit-kaseta.webp', title: '«Касета»', meta: 'YouTube · 2:25', cue: 'Прислухайся до басу ще до першого рядка.',
+      artwork: { image: 'https://f4.bcbits.com/img/a3772016215_5.jpg', source: 'https://sadsvit.bandcamp.com/track/--2' },
+    },
   },
   pair('mu-2', 'music', 'Хаски', 'OTOY', 'ua', 'Реп · хіп-хоп', 'Увімкни «Пекло» і прислухайся, як OTOY розставляє наголоси в рядку. А в «На двох» його низькому голосу відповідає KLER.', 'https://music.apple.com/ua/artist/otoy/1525737918', 'Послухати OTOY'),
   pair('mu-3', 'music', 'Shortparis', 'DakhaBrakha', 'world', 'Етнохаос · концерт', 'Вибери концертний запис «ДахаБрахи». Четверо музикантів виходять із віолончеллю та барабанами й співають народних пісень на кілька голосів.', 'https://www.dakhabrakha.com.ua/', 'До «ДахаБрахи»'),
