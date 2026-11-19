@@ -29,3 +29,9 @@ python design/photocraft/build_covers.py "/path/to/photocraft-cli" yt-1 --editab
 python design/photocraft/build_arcade.py "/path/to/photocraft-cli"
 python design/photocraft/build_arcade.py "/path/to/photocraft-cli" hedgehog --editable
 ```
+
+Для шести карток «Обери свій напрям» відкрий `editable/direction-*.pcraft`. Наприклад, у `direction-music.pcraft` можна пересунути тонарм або змінити колір платівки. Щоб відтворити ці проєкти й експортувати квадратні WebP у `app/assets/directions/`:
+
+```sh
+python design/photocraft/build_directions.py "/path/to/photocraft-cli"
+```

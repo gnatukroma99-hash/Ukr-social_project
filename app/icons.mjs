@@ -37,4 +37,3 @@ export function clueMarkup(key) {
   const [alt,letters]=clues[key], art=key==='dawn'?'horizon':key;
   return `<figure class="ink-clue"><img src="./assets/ink/${art}.png" width="72" height="72" alt="${alt}"><figcaption><span class="small-label">Підказка</span><b>${letters}</b></figcaption></figure>`;
 }
-export const categoryArt = ['film','shorts','tape','photo','nib','pad'];
