@@ -1,5 +1,6 @@
 import { icon, clueMarkup, categoryArt } from './icons.mjs';
 import { categories } from './data.mjs';
+import { arcadeSize } from './arcade.mjs';
 import { store, state, allPairs, session, otherModeToday, localPoints } from './state.mjs';
 import { dayAt, dayLabel, monthLabel, shiftMonth, deckFor, totalPoints, safeUrl } from './engine.mjs';
 
@@ -63,7 +64,7 @@ export function quests(task, answer) {
 
 export function arcadeView(g) {
   const intro = back()+head('Мінігра / 01','Свій / Чужий','Розрізняй українські й російські слова на швидкість.');
-  if(!g) return intro+`<div class="arcade-intro"><div class="game-art" aria-hidden="true"><span>RU</span><span>UA</span></div><div>${eyebrow('Словесний спринт')}<h2>Впізнаєш із першого свайпу?</h2><p>Українське слово — вправо, російське — вліво. На ПК працюють стрілки або кнопки. Десять карток, три життя, дедалі менше часу.</p><div class="row game-meta"><span>${icon('heart',15)} 3 життя</span><span>${icon('layers',15)} 10 карток</span></div>${act('game-start','Почати гру')}<small class="block-meta">Особистий рекорд: ${store.best}/10 · поза місячним рейтингом</small></div></div>`;
+  if(!g) return intro+`<div class="arcade-intro"><div class="game-art" aria-hidden="true"><span>RU</span><span>UA</span></div><div>${eyebrow('Словесний спринт')}<h2>Десять карток на раунд</h2><p>Українське слово змахуй вправо, російське — вліво. На ПК натискай стрілки або кнопки під карткою. У колоді ${arcadeSize} слів і висловів. Картка повториться, коли побачиш усю колоду.</p><div class="row game-meta"><span>${icon('heart',15)} 3 життя</span><span>${icon('clock',15)} Час скорочується</span></div>${act('game-start','Почати гру')}<small class="block-meta">Особистий рекорд: ${store.best}/10 · поза місячним рейтингом</small></div></div>`;
   if(g.over) return intro+`<section class="panel game-result">${eyebrow('Підсумок спринту')}<h2>${g.score}<small> / 10</small></h2><p>${esc(g.summary)} Рекорд: ${store.best}/10.</p><div class="result-choices">${g.history.map(h=>`<div><span class="${h.ok?'lime-text':''}">${icon(h.ok?'check':'close',15)}</span><b>${esc(h.word)}</b><span>${esc(h.hint)}</span></div>`).join('')}</div>${act('game-start','Зіграти знову')}</section>`;
   return `<div class="narrow">${act('game-exit','До правил','back','back')}<div class="quiz-header">${eyebrow('Словесний спринт')}<span class="meta">${g.index+1} / 10 &nbsp; · &nbsp; життя: ${g.lives}</span></div><div class="game-time"><i id="clock-bar"></i></div><div class="swipe-card" id="swipe-card"><span class="eyebrow">Впізнай мову</span><h1>${esc(g.deck[g.index][0])}</h1><p>← RU &nbsp; · &nbsp; UA →</p></div><div class="game-actions"><button class="btn ghost" data-act="game-ru">${icon('back',18)} Чуже · RU</button>${act('game-ua','Своє · UA')}</div><p class="meta game-hint" aria-live="polite">${esc(g.last || 'Свайп, стрілка на клавіатурі або кнопка.')}</p></div>`;
 }

@@ -1,6 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
-import { arcadeItems } from './data.mjs';
+import { nextArcadeCard, ROUND_SIZE } from './arcade.mjs';
 import { dayAt, validMonth, safeUrl } from './engine.mjs';
 import { store, persist, state, session, connect, authAction, disconnect, clubApi, refresh, refreshCatalog, rename, startQuestion, submitAnswer, toggleSaved } from './state.mjs';
 import { shell, home, category, savedView, quests, arcadeView, rankView, esc, eyebrow } from './views.mjs';
@@ -64,10 +64,11 @@ function showModal(title,body,kicker='Спільнота') {
 }
 function support(tab='feedback'){showModal('Підтримка',supportBody(tab,route().page==='cat'?route().value:'youtube'));}
 
-const shuffle=arr=>{const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
-function startGame(){stopClock();game={deck:shuffle(arcadeItems).slice(0,10),index:0,score:0,lives:3,history:[],over:false,last:''};nextTick();}
+function startGame(){stopClock();game={deck:[],index:0,score:0,lives:3,history:[],over:false,last:''};nextTick();}
 function nextTick(){
-  stopClock(); const g=game;g.duration=6500-Math.min(g.index,8)*360;g.until=performance.now()+g.duration;draw();
+  stopClock();const {card,rotation}=nextArcadeCard(store.arcadeRotation);
+  const g=game;g.deck.push(card);store.arcadeRotation=rotation;persist();
+  g.duration=6500-Math.min(g.index,8)*360;g.until=performance.now()+g.duration;draw();
   const update=()=>{if(game!==g||g.over||route().page!=='arcade'){stopClock();return;}const left=Math.max(0,g.until-performance.now());const bar=document.querySelector('#clock-bar');if(bar)bar.style.transform=`scaleX(${left/g.duration})`;if(!left)pickSide('time');};
   ticker=setInterval(update,55);
 }
@@ -76,7 +77,7 @@ function pickSide(side){
   stopClock();const g=game,[word,language,hint]=g.deck[g.index];const ok=language===side;
   if(ok)g.score++;else g.lives--;g.history.push({word,ok,hint});g.last=`${ok?'Так!':side==='time'?'Час вийшов.':'Не цього разу.'} ${word} · ${language.toUpperCase()}. ${hint}.`;
   g.index++;gameTouch=null;
-  if(!g.lives||g.index===10){g.over=true;g.summary=g.lives?'Усі десять карток пройдено.':'Життя скінчилися.';store.best=Math.max(store.best,g.score);persist();draw();}
+  if(!g.lives||g.index===ROUND_SIZE){g.over=true;g.summary=g.lives?'Усі десять карток пройдено.':'Життя скінчилися.';store.best=Math.max(store.best,g.score);persist();draw();}
   else nextTick();
 }
 

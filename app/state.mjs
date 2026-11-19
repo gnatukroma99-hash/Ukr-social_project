@@ -3,7 +3,7 @@ import { dayAt, shiftDay, deckFor, scoreAnswer, streakEnding, streakBonus, total
 import { catalog } from './catalog.mjs';
 
 const key = 'svoie.v1';
-const initial = () => ({ name: 'Слухач', saved: [], days: {}, best: 0, sessions: {}, active: '', played: {}, draft: null, vibe: 'all' });
+const initial = () => ({ name: 'Слухач', saved: [], days: {}, best: 0, arcadeRotation: null, sessions: {}, active: '', played: {}, draft: null, vibe: 'all' });
 function load() {
   try { return Object.assign(initial(), JSON.parse(localStorage.getItem(key)) || {}); }
   catch { return initial(); }
