@@ -4,6 +4,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { competition } from './tournament.mjs';
+import { publicPage } from './public-pages.mjs';
 import { categories } from '../app/data.mjs';
 import { DAILY_LIMIT, dayAt, shiftDay, shiftMonth, deckFor, publicQuestion, scoreAnswer, streakEnding, streakBonus, validMonth, safeUrl } from '../app/engine.mjs';
 
@@ -107,6 +108,7 @@ export function makeService({ database, now = Date.now, tournament=null } = {}) 
       if (req.method === 'OPTIONS') return send(204);
       const url = new URL(req.url, 'http://localhost');
       const route = `${req.method} ${url.pathname}`;
+      if(['GET /','GET /privacy'].includes(route)){res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});return res.end(publicPage(url.pathname));}
       const ip = req.socket.remoteAddress; limit(`request:${ip}`, 900);
       if (route === 'GET /api/health') return send(200, { service: 'povazhaite-svoie', version: 1, mode:cup?'tournament':'club',end:cup?.end,email:!!tournament?.email });
       if(cup && route==='GET /auth/finish'){
