@@ -4,6 +4,8 @@ import { arcadeProgress } from './state.mjs';
 import { esc, back, head, eyebrow, act, link, external } from './views.mjs';
 import { arcadeDecks, arcadeSize, ROUND_SIZE } from './arcade.mjs';
 import { FRAME_ALBUMS, LEVELS, sideDuration } from './arcade-levels.mjs';
+import { guessPool, keyMarks } from './word-game.mjs';
+import { lexiconSize } from './lexicon.mjs';
 import { ALPHABET, DROP_WORDS, FRAME_ROUNDS, dropDecks, dropTurn, frameDecks, frameMax, frameTileCount, frameValue, ladderDecks, ladderWord } from './minigames.mjs';
 
 const games = {
@@ -11,6 +13,7 @@ const games = {
   letters: {title:'Буквопад', tag:'02 / На реакцію', glyph:'bolt', copy:'Лови літери в потрібному порядку. Склади п’ять слів.'},
   frames: {title:'Відкрий кадр', tag:'03 / На впізнавання', glyph:'camera', copy:'Вгадай роботу з каталогу або предмет на ілюстрації.'},
   ladder: {title:'Зміни літеру', tag:'04 / Без таймера', glyph:'puzzle', copy:'Дійди до слова-цілі. За хід міняй одну літеру.'},
+  word: {title:'Вгадай слово', tag:'05 / За літерами', glyph:'book', copy:'Введи слово й перевір, які літери стоять на своїх місцях.'},
 };
 const selected=kind=>arcadeProgress.levels[kind];
 const records=level=>arcadeProgress.byLevel[level];
@@ -21,6 +24,7 @@ function recordLabel(kind, level=selected(kind), album=arcadeProgress.album) {
   if(kind==='side') return `Рекорд: ${r.sideBest} / ${ROUND_SIZE}`;
   if(kind==='letters') return `Рекорд: ${r.lettersBest} / ${DROP_WORDS} слів`;
   if(kind==='frames') return `Рекорд: ${r.frameBest[album]} / ${frameMax(level)}`;
+  if(kind==='word') return `Перемоги: ${r.wordWins} / ${r.wordPlayed}${r.wordBest?` · Найменше спроб: ${r.wordBest}`:''}`;
   const puzzles=ladderDecks[level];
   return `Розв’язано: ${puzzles.filter(p=>r.ladderBest[p.id]).length} / ${puzzles.length}`;
 }
@@ -29,11 +33,12 @@ const formatTime=ms=>new Intl.NumberFormat('uk',{maximumFractionDigits:2}).forma
 const exit=()=>act('arcade-settings','До налаштувань','btn ghost mini-settings-link','tune');
 
 function art(kind) {
+  if(kind==='word')return `<div class="arcade-art" aria-hidden="true"><div class="word-print"><i></i><i></i><i></i><i></i><strong>Л</strong><strong>І</strong><strong>Т</strong><strong>О</strong></div></div>`;
   const labels={side:['RU','UA'],letters:['Ї','Є','К'],ladder:['К','І','Т']}[kind];
   return `<div class="arcade-art arcade-art-${kind}" aria-hidden="true">${labels?labels.map(ch=>`<b>${ch}</b>`).join(''):`<div class="art-frame"><img src="./assets/arcade/fox.webp" alt="" width="352" height="352"><div>${Array.from({length:9},()=>'<i></i>').join('')}</div></div>`}</div>`;
 }
 export function arcadeLobby() {
-  return back()+head('4 мінігри','Аркада','Вибери гру та складність. Рекорди лишаються на цьому пристрої й не впливають на турнір.')+`<div class="arcade-grid">${Object.entries(games).map(([kind,{title,tag,glyph,copy}])=>`<a href="#arcade/${kind}" class="arcade-card arcade-card-${kind}"><div class="arcade-card-copy">${eyebrow(tag,false)}<h2>${title}</h2><p>${copy}</p><span class="arcade-record">${icon('trophy',15)} <span>${LEVELS[selected(kind)].name} · ${recordLabel(kind)}</span></span></div>${art(kind)}<span class="arcade-card-icon">${icon(glyph,18)}</span><span class="arcade-card-arrow">${icon('upRight',17)}</span></a>`).join('')}</div>`;
+  return back()+head('5 мініігор','Аркада','Вибери гру та складність. Рекорди лишаються на цьому пристрої й не впливають на турнір.')+`<div class="arcade-grid">${Object.entries(games).map(([kind,{title,tag,glyph,copy}])=>`<a href="#arcade/${kind}" class="arcade-card arcade-card-${kind}"><div class="arcade-card-copy">${eyebrow(tag,false)}<h2>${title}</h2><p>${copy}</p><span class="arcade-record">${icon('trophy',15)} <span>${LEVELS[selected(kind)].name} · ${recordLabel(kind)}</span></span></div>${art(kind)}<span class="arcade-card-icon">${icon(glyph,18)}</span><span class="arcade-card-arrow">${icon('upRight',17)}</span></a>`).join('')}</div>`;
 }
 
 export function miniPage(kind, game) {
@@ -42,20 +47,22 @@ export function miniPage(kind, game) {
 }
 export function miniStage(kind, game) {
   if(!game) return miniIntro(kind);
-  return kind==='side'?sideView(game):kind==='letters'?dropView(game):kind==='frames'?frameView(game):ladderView(game);
+  return kind==='side'?sideView(game):kind==='letters'?dropView(game):kind==='frames'?frameView(game):kind==='word'?wordView(game):ladderView(game);
 }
 const descriptions={
   side:'Українське слово змахуй вправо, російське вліво. На ПК натискай стрілки або кнопки під карткою. У раунді до десяти карток.',
   letters:'Торкнися колонки з потрібною літерою або натисни її номер. За промах або пропуск втрачаєш життя. Склади п’ять слів.',
   frames:'Відкривай плитки або одразу обирай відповідь. За правильну відповідь із меншою кількістю відкритих плиток отримаєш більше балів. У раунді п’ять кадрів.',
-  ladder:'Обери позицію, потім нову літеру. Після заміни має вийти слово зі словника гри. Можеш скасувати хід або взяти підказку.',
+  ladder:`Обери позицію й заміни одну літеру. У словнику ${lexiconSize.toLocaleString('uk')} слів і словоформ на 3–6 літер, без апострофів і дефісів.`,
+  word:'Відгадай український іменник. Введи будь-яке слово потрібної довжини й добирай наступні за позначками. Можна вживати словоформи. Таймера немає.',
 };
 const levelCaption=(kind,level)=>{
   const {side,letters,frames}=LEVELS[level], lives=n=>`${n} ${n===5?'життів':'життя'}`;
   if(kind==='side') return `${lives(side.lives)} · від ${formatTime(sideDuration(level,8))} до ${formatTime(side.time)} с на картку`;
   if(kind==='letters') return `${letters.lanes} колонки · ${lives(letters.lives)} · до ${formatTime(letters.time)} с на літеру`;
   if(kind==='frames') return `${frames.grid} × ${frames.grid} плитки · ${frames.choices} варіанти відповіді`;
-  return level==='easy'?'3 літери · 2 або 3 ходи':level==='normal'?'3 або 4 літери · до 5 ходів':'4 або 5 літер · від 4 ходів';
+  if(kind==='word')return `Літер у слові: ${LEVELS[level].word.size} · Спроб: ${LEVELS[level].word.tries}`;
+  return level==='easy'?'3 літери · 2 або 3 ходи':level==='normal'?'3–5 літер · до 5 ходів':'4–6 літер · до 8 ходів';
 };
 function toggle(id,value,label,on) {
   return `<button type="button" class="arcade-toggle" data-act="${id}" data-value="${value}" aria-pressed="${on}">${label}</button>`;
@@ -64,14 +71,31 @@ function miniIntro(kind) {
   const level=selected(kind), album=arcadeProgress.album;
   const puzzle=kind==='ladder'?currentLadder(level):null;
   const stock=kind==='side'?`${arcadeDecks[level].length} із ${arcadeSize} карток`:kind==='letters'?`Слів на рівні: ${dropDecks[level].length}`:
-    kind==='frames'?`Кадрів у добірці: ${frameDecks[album].length}`:`${puzzle.start.toLocaleUpperCase('uk')} → ${puzzle.target.toLocaleUpperCase('uk')}`;
+    kind==='frames'?`Кадрів у добірці: ${frameDecks[album].length}`:kind==='word'?`Слів для загадування: ${guessPool(level).length}`:`${puzzle.start.toLocaleUpperCase('uk')} → ${puzzle.target.toLocaleUpperCase('uk')}`;
   return `<section class="panel mini-intro arcade-card-${kind}">${art(kind)}<div class="mini-setup"><p>${descriptions[kind]}</p>
     <fieldset class="arcade-choice"><legend>Складність</legend><div>${Object.entries(LEVELS).map(([id,{name}])=>toggle('arcade-level',id,name,level===id)).join('')}</div></fieldset>
     <p class="arcade-level-meta meta">${levelCaption(kind,level)}</p>
     ${kind==='frames'?`<fieldset class="arcade-choice"><legend>Добірка</legend><div>${Object.entries(FRAME_ALBUMS).map(([id,name])=>toggle('frame-album',id,name,album===id)).join('')}</div></fieldset>`:''}
-    <div class="mini-start-row">${act(kind==='side'?'game-start':'mini-start',kind==='ladder'?'Почати ланцюжок':'Почати гру','btn primary','play')}<div class="meta"><b>${esc(stock)}</b><span>${recordLabel(kind)}</span></div></div></div></section>`;
+    <div class="mini-start-row">${act(kind==='side'?'game-start':'mini-start',kind==='ladder'?'Почати ланцюжок':kind==='word'&&records(level).wordRound?'Продовжити слово':'Почати гру','btn primary','play')}<div class="meta"><b>${esc(stock)}</b><span>${recordLabel(kind)}</span></div></div></div></section>`;
 }
 const resultActions=button=>`<div class="btn-row">${button}${exit()}${link('arcade','До аркади','btn ghost','back')}</div>`;
+
+const markNames={exact:'На місці',present:'Інша позиція',absent:'Немає або зайва'};
+function wordView(g){
+  const {size,tries}=LEVELS[g.level].word,keys=keyMarks(g.rows),current=g.rows.length;
+  const rows=Array.from({length:tries},(_,i)=>{
+    const row=g.rows[i],active=!g.over&&i===current,word=row?.word||(active?g.draft:'');
+    const cells=Array.from({length:size},(_,j)=>`<span aria-hidden="true" class="word-cell${active?' editing':''}" data-mark="${row?.marks[j]||''}">${esc((word[j]||'').toUpperCase())}</span>`).join('');
+    const label=row?[...word].map((w,j)=>`${w.toUpperCase()}: ${markNames[row.marks[j]]}`).join('; '):active?`Введено: ${g.draft.toUpperCase()||'жодної літери'}`:'Порожній рядок';
+    return `<div role="listitem" class="word-row" aria-label="Спроба ${i+1}. ${esc(label)}">${cells}</div>`;
+  }).join('');
+  const buttons=ALPHABET.map(ch=>`<button type="button" data-act="word-type" data-letter="${ch}" data-mark="${keys[ch.toLowerCase()]||''}" aria-label="${ch}${keys[ch.toLowerCase()]?`: ${markNames[keys[ch.toLowerCase()]]}`:''}">${ch}</button>`).join('');
+  const legend=Object.entries(markNames).map(([m,label])=>`<span><i data-mark="${m}" aria-hidden="true"></i>${label}</span>`).join('');
+  return `<section class="panel word-panel" style="--word-size:${size}"><div class="word-sheet"><div class="word-rubric"><span>${esc(LEVELS[g.level].name)}</span><span>Літер: ${size}</span></div><div class="word-board" role="list" aria-label="Спроби">${rows}</div></div><div class="word-tools">
+    ${eyebrow(g.over?'Підсумок':`Спроба ${current+1} / ${tries}`,false)}${focusTitle(g.over?g.won?'Слово відгадано!':'Спроби скінчилися':'Твоя версія')}
+    ${g.over?`<p class="word-reveal">Загадане слово: <strong>${esc(g.target.toUpperCase())}</strong></p><p class="meta">${recordLabel('word',g.level)}</p>${resultActions(act('mini-start','Наступне слово'))}`:`<div class="word-legend">${legend}</div><div class="word-keys" aria-label="Українська абетка">${buttons}</div><div class="btn-row word-controls">${act('word-submit','Перевірити','btn primary','check')}<button type="button" class="btn ghost" data-act="word-erase" aria-label="Стерти останню літеру">${icon('back',16)} Стерти</button></div><p class="word-notice muted">${esc(g.notice||'На клавіатурі: Enter, щоб перевірити слово.')}</p>${exit()}`}
+  </div></section>`;
+}
 
 function sideView(g) {
   if(g.over) return `<section class="panel mini-result">${eyebrow(`Підсумок · ${LEVELS[g.level].name}`)}${focusTitle(`${g.score} / ${ROUND_SIZE}`)}<p>${esc(g.summary)} ${recordLabel('side',g.level)}.</p><div class="result-choices">${g.history.map(h=>`<div><span class="${h.ok?'lime-text':''}">${icon(h.ok?'check':'close',15)}</span><b>${esc(h.word)}</b><span>${esc(h.hint)}</span></div>`).join('')}</div>${resultActions(act('game-start','Зіграти знову'))}</section>`;

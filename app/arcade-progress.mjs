@@ -27,6 +27,9 @@ export function arcadeProgressFrom(raw, legacy={}) {
         frameBest:entries(albums,album=>count(existing.frameBest?.[album]??(defaults&&album==='catalog'?old.frames:0))),
         ladderBest:Object.fromEntries(Object.entries(object(existing.ladderBest??(defaults?old.ladder:null))).filter(([key,best])=>/^[а-щьюяєіїґ]+-[а-щьюяєіїґ]+$/u.test(key)&&count(best)>0)),
         ladderIndex:count(existing.ladderIndex??(defaults?old.puzzle:0)),
+        wordSeen:seen(existing.wordSeen),
+        wordRound:existing.wordRound && typeof existing.wordRound==='object'?existing.wordRound:null,
+        wordWins:count(existing.wordWins),wordPlayed:count(existing.wordPlayed),wordBest:count(existing.wordBest),
       };
     }),
   };

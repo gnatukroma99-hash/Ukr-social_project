@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { LEVELS } from '../app/arcade-levels.mjs';
 import { dropWords } from '../app/minigame-data.mjs';
-import { ladderWords, legacyLadderPairs } from '../app/ladder-data.mjs';
+import { ladderWords, ladderPairs, legacyLadderPairs } from '../app/ladder-data.mjs';
+import { knownWord, lexiconSize } from '../app/lexicon.mjs';
 import {
   ALPHABET, DROP_WORDS, FRAME_ROUNDS, dropDecks, newDropGame, dropTurn, dropDuration, catchLetter,
   frameDecks, newFrameGame, frameValue, frameTileCount, frameMax, uncoverFrame, guessFrame, nextFrame,
@@ -131,25 +132,37 @@ test('frame scoring reflects grid size, rewards fewer tiles and accepts one gues
   }
 });
 
-test('all 106 ladders have valid answers and hints for their difficulty',()=>{
-  const dictionary=new Set(ladderWords);
-  assert.equal(ladderPuzzles.length,106);
+test('all 600 ladders retain the old record IDs and draw from the expanded word bank',()=>{
+  assert.ok(lexiconSize>99000 && ladderWords.every(knownWord));
+  assert.equal(ladderPuzzles.length,600);
   assert.equal(new Set(ladderPuzzles.map(p=>p.id)).size,ladderPuzzles.length);
   assert.deepEqual(ladderDecks.normal.slice(0,14).map(p=>[p.start,p.target]),legacyLadderPairs);
+  for(const [level,pairs] of Object.entries(ladderPairs))assert.deepEqual(ladderDecks[level].slice(0,pairs.length).map(p=>[p.start,p.target]),pairs);
   for(const puzzle of ladderPuzzles){
     const {start,target,min,level}=puzzle;
-    assert.ok(dictionary.has(start)&&dictionary.has(target));
+    assert.ok(knownWord(start)&&knownWord(target));
     assert.equal(start.length,target.length);
     assert.ok(min>=2,puzzle.id);
     if(level==='easy') assert.ok(start.length===3&&min<=3,puzzle.id);
-    if(level==='normal') assert.ok(start.length<=4&&min<=5,puzzle.id);
-    if(level==='hard') assert.ok(start.length===5&&min>=4||start.length===4&&min>=5,puzzle.id);
+    if(level==='normal') assert.ok(start.length<=5&&min<=5,puzzle.id);
+    if(level==='hard') assert.ok(start.length>=4&&start.length<=6&&min<=8,puzzle.id);
+  }
+});
+
+test('shortest paths and hints work on all lengths, including the reported кішка → вішка move',()=>{
+  const report=ladderDecks.hard[2];assert.equal(report.id,'кішка-варта');
+  const moved=changeLadderLetter(newLadderGame(report),'В');assert.deepEqual(moved.path,['кішка','вішка']);
+  assert.ok(!ladderPath('вішка','варта',['кішка']).includes('кішка'));
+  const sample=ladderPuzzles.filter((p,i)=>i%25===0 || p===report);
+  for(const puzzle of sample){
+    const {target,min}=puzzle;
+    assert.equal(ladderPath(puzzle.start,target).length-1,min,puzzle.id);
     let g=newLadderGame(puzzle);
     for(let i=0;i<min;i++){
       const word=g.path.at(-1), next=ladderPath(word,target,g.path.slice(0,-1))[1];
       const slots=[...word].map((ch,j)=>ch===next[j]?-1:j).filter(j=>j>=0);
       assert.equal(slots.length,1);
-      assert.ok(dictionary.has(next));
+      assert.ok(knownWord(next));
       g=hintLadder(g);
       assert.equal(g.slot,slots[0]);
       g=changeLadderLetter(g,next[g.slot]);

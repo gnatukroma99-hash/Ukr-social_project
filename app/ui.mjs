@@ -9,6 +9,7 @@ import { arcadeLobby, miniPage } from './arcade-views.mjs';
 import { makeMiniArcade } from './arcade-controller.mjs';
 import { profile, authors, menuBody, supportBody, publicIssue } from './community.mjs';
 import { icon } from './icons.mjs';
+import {applyPalette} from './appearance.mjs';
 
 const root = document.querySelector('#shell'), toast = document.querySelector('#toast');
 let authTarget=null;
@@ -117,6 +118,10 @@ document.addEventListener('click',async e=>{
   const el=e.target.closest('[data-act]');if(!el){if(e.target.closest('.hero a[href="#cat/music"]')){store.vibe='ua';persist();}if(modal&&e.target.closest('a[href^="#"]'))closeModal();if(e.target.closest('.skip-link')){e.preventDefault();document.querySelector('#main')?.focus();}return;}
   e.preventDefault();const act=el.dataset.act;
   if(act==='close'){closeModal();return;}
+  if(act==='theme' && applyPalette(el.dataset.value)){
+    el.closest('.theme-options').querySelectorAll('[data-act="theme"]').forEach(b=>b.setAttribute('aria-pressed',String(b===el)));
+    return;
+  }
   if(act==='menu'){showModal('Меню',menuBody(),'Навігація');return;}
   if(act==='support'||act==='suggest'||act==='support-tab'){support(act==='suggest'?'pair':el.dataset.value||'feedback');return;}
   if(act==='browse'){const b=document.querySelector('#branches');b?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});b?.focus({preventScroll:true});return;}
@@ -133,7 +138,7 @@ document.addEventListener('click',async e=>{
     persistArcade();draw();root.querySelector(`[data-act="${act}"][aria-pressed="true"]`)?.focus({preventScroll:true});return;
   }
   if(act==='game-ru'||act==='game-ua'){pickSide(act.slice(-2));return;}
-  if(!modal&&mini.click(act,el.dataset))return;
+  if(!modal&&mini.click(act,el.dataset,e.detail>0))return;
   if(act==='rank-refresh'){await loadRank();return;}
   if(act==='reveal'){reveal=!reveal;draw();return;}
   if(act==='draft'){const form=document.querySelector('#support-form');if(form){store.draft=Object.fromEntries(new FormData(form));persist();notify('Чернетку збережено на цьому пристрої.');}return;}

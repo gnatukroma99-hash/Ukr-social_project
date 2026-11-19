@@ -1,5 +1,6 @@
 import { arcadeProgress, persistArcade } from './state.mjs';
 import { currentLadder, isMiniGame, miniStage } from './arcade-views.mjs';
+import { newWordGame, typeWord, eraseWord, submitWord, snapshotWord } from './word-game.mjs';
 import {
   ALPHABET, FRAME_ROUNDS, frameTileCount, ladderDecks, ladderWord, dropDuration,
   newDropGame, catchLetter, newFrameGame, uncoverFrame, guessFrame, nextFrame,
@@ -49,7 +50,12 @@ export function makeMiniArcade(activeKind) {
     game=next;
     if(dealt && next.kind==='letters')arcadeProgress.byLevel[next.level].dropSeen=next.seen;
     if(dealt && next.kind==='frames')arcadeProgress.frameSeen[next.album]=next.seen;
-    if(saveRecord(next)||dealt)persistArcade();
+    if(next.kind==='word'){
+      const r=arcadeProgress.byLevel[next.level];
+      r.wordSeen=next.seen;r.wordRound=snapshotWord(next);
+      if(next.over){r.wordPlayed++;if(next.won){r.wordWins++;r.wordBest=Math.min(r.wordBest||Infinity,next.rows.length);}}
+      persistArcade();
+    }else if(saveRecord(next)||dealt)persistArcade();
     render(next.over?'.mini-focus':focus);
   }
 
@@ -93,9 +99,10 @@ export function makeMiniArcade(activeKind) {
     if(kind==='letters') {
       show({...newDropGame(level,byLevel[level].dropSeen),paused:document.hidden},'.mini-focus');
       remaining=dropDuration(game);arm();
-    } else show(kind==='frames'?newFrameGame(level,album,frameSeen[album]):newLadderGame(currentLadder(level)),'.mini-focus');
+    } else if(kind==='word')show(newWordGame(level,byLevel[level].wordSeen,byLevel[level].wordRound),'.mini-focus');
+    else show(kind==='frames'?newFrameGame(level,album,frameSeen[album]):newLadderGame(currentLadder(level)),'.mini-focus');
   }
-  function click(action, data) {
+  function click(action, data, pointer=false) {
     const kind=activeKind();
     if(!isMiniGame(kind)) return false;
     if(action==='mini-start') {start(kind);return true;}
@@ -116,6 +123,10 @@ export function makeMiniArcade(activeKind) {
       }
       if(action==='frame-guess'){show(guessFrame(game,index),'.mini-focus');return true;}
       if(action==='frame-next'){show(nextFrame(game),'.mini-focus');return true;}
+    } else if(kind==='word') {
+      if(action==='word-type'){show(typeWord(game,data.letter),pointer?'.mini-focus':'');return true;}
+      if(action==='word-erase'){show(eraseWord(game),pointer?'.mini-focus':'');return true;}
+      if(action==='word-submit'){show(submitWord(game),'.mini-focus');return true;}
     } else {
       if(action==='ladder-slot'){show(selectLadderSlot(game,index));return true;}
       if(action==='ladder-letter'){show(changeLadderLetter(game,data.letter));return true;}
@@ -134,6 +145,11 @@ export function makeMiniArcade(activeKind) {
     const key=event.key, index=/^[1-4]$/.test(key)?Number(key)-1:-1;
     if(game.kind==='letters' && !game.paused && game.letters[index]){event.preventDefault();pick(index);}
     if(game.kind==='frames' && !game.answers[game.round] && game.deck[game.round].choices[index]){event.preventDefault();show(guessFrame(game,index),'.mini-focus');}
+    if(game.kind==='word'){
+      if(ALPHABET.includes(key.toUpperCase())){event.preventDefault();show(typeWord(game,key),'.mini-focus');}
+      else if(key==='Backspace'){event.preventDefault();show(eraseWord(game),'.mini-focus');}
+      else if(key==='Enter'&&!event.target?.closest?.('a,button')){event.preventDefault();show(submitWord(game),'.mini-focus');}
+    }
     if(game.kind==='ladder') {
       if(key==='ArrowLeft' || key==='ArrowRight'){
         event.preventDefault();

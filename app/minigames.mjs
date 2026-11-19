@@ -3,9 +3,10 @@ import { categories } from './data.mjs';
 import { illustrations } from './arcade-art.mjs';
 import { DEFAULT_ALBUM, DEFAULT_LEVEL, LEVELS } from './arcade-levels.mjs';
 import { dropWords } from './minigame-data.mjs';
-import { ladderPairs, ladderWords } from './ladder-data.mjs';
+import { ladderRows } from './ladder-decks.mjs';
+import { ALPHABET, knownWord, ladderPath, replaceLetter } from './lexicon.mjs';
 
-export const ALPHABET = [...'АБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯ'];
+export { ALPHABET, ladderPath };
 export const DROP_WORDS = 5;
 export const FRAME_ROUNDS = 5;
 
@@ -107,26 +108,9 @@ export function nextFrame(g,random=Math.random) {
   return g.round+1===FRAME_ROUNDS?{...g,over:true}:dealFrame({...g,round:g.round+1},random);
 }
 
-const dictionary=new Set(ladderWords);
-const lowercase=ALPHABET.map(ch=>ch.toLocaleLowerCase('uk'));
-function replaceLetter(word, index, ch) { return word.slice(0,index)+ch+word.slice(index+1); }
-const neighbors=new Map(ladderWords.map(word=>[word,[...word].flatMap((ch,index)=>lowercase.filter(next=>next!==ch)
-  .map(next=>replaceLetter(word,index,next)).filter(next=>dictionary.has(next)))]));
-export function ladderPath(start, target, excluded=[]) {
-  const seen=new Set([...excluded,start]), queue=[[start]];
-  for(const path of queue){
-    const word=path[path.length-1];
-    if(word===target) return path;
-    for(const next of neighbors.get(word) || []){
-      if(seen.has(next)) continue;
-      seen.add(next);queue.push([...path,next]);
-    }
-  }
-  return null;
-}
-export const ladderDecks=Object.fromEntries(Object.entries(ladderPairs).map(([level,pairs])=>[level,pairs.map(([start,target])=>{
-  const path=ladderPath(start,target);
-  return {id:`${start}-${target}`,level,start,target,min:path?path.length-1:0};
+export const ladderDecks=Object.fromEntries(Object.entries(ladderRows).map(([level,rows])=>[level,rows.split('\n').map(line=>{
+  const [start,target,min]=line.split(' ');
+  return {id:`${start}-${target}`,level,start,target,min:Number(min)};
 })]));
 export const ladderPuzzles=Object.values(ladderDecks).flat();
 export function newLadderGame(puzzle) {
@@ -142,7 +126,7 @@ export function changeLadderLetter(g, char) {
   if(g.over || !ALPHABET.includes(ch)) return g;
   const word=ladderWord(g), next=replaceLetter(word,g.slot,ch.toLocaleLowerCase('uk'));
   if(next===word) return {...g,notice:'Обери іншу літеру.'};
-  if(!dictionary.has(next)) return {...g,notice:`«${next}» немає у словнику гри.`};
+  if(!knownWord(next)) return {...g,notice:`«${next}» немає у словнику гри.`};
   if(g.path.includes(next)) return {...g,notice:'Це слово вже в ланцюжку. Можеш скасувати хід.'};
   return {...g,path:[...g.path,next],over:next===g.puzzle.target,notice:`Новий крок: ${next}.`};
 }

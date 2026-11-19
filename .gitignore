@@ -2,6 +2,7 @@ node_modules/
 release/
 .cache/
 app/bundle.js
+app/theme-start.js
 .env
 server/data/
 *.sqlite

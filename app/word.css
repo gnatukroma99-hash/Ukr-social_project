@@ -1,0 +1,44 @@
+.arcade-card-word { --game-ink:#add5ff; --game-edge:#43556b; --game-wash:#243246; }
+.word-print { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; padding:8px; border-radius:11px; border:1px solid #9395a5; background:#323846; transform:rotate(-8deg); box-shadow:3px 5px 0 #10132160; }
+.word-print>* { display:grid; place-items:center; height:25px; width:21px; border-radius:3px; background:#697183; color:white; font:800 .84rem/1 var(--font); }
+.word-print i:nth-child(2),.word-print strong:nth-child(5) { background:#a1ccac; color:#17271b; }
+.word-print i:nth-child(4),.word-print strong:nth-child(7) { background:#dfbb78; color:#302315; }
+.word-panel { display:grid; grid-template-columns:minmax(180px,.85fr) minmax(0,1.2fr); gap:clamp(16px,3vw,36px); align-items:start; }
+.word-sheet { background:var(--bg); border:1px solid var(--line); border-radius:14px; padding:clamp(9px,1.8vw,20px); }
+.word-rubric { display:flex; align-items:center; justify-content:space-between; padding:0 1px 9px; margin-bottom:10px; border-bottom:1px solid var(--line); color:var(--subtle); font:700 .7rem/1.3 ui-monospace,monospace; }
+.word-board { display:grid; gap:5px; margin-inline:auto; width:min(100%,calc(var(--word-size)*55px)); }
+.word-row { display:grid; grid-template-columns:repeat(var(--word-size),minmax(0,1fr)); gap:5px; }
+.word-cell { display:grid; place-items:center; position:relative; aspect-ratio:1; border:1px solid var(--line); border-radius:6px; background:var(--surface); color:var(--text); font-weight:850; font-size:clamp(1rem,2.3vw,1.5rem); }
+.word-cell.editing { border-color:var(--subtle); }
+.word-cell.editing:not(:empty) { border-color:var(--violet); box-shadow:inset 0 -2px var(--violet); }
+.word-tools { min-width:0; }
+.word-tools h2 { font-size:clamp(1.5rem,3.5vw,2.2rem); margin:3px 0 8px; }
+.word-legend { display:flex; flex-wrap:wrap; gap:5px 11px; margin:8px 0 14px; font-size:.76rem; color:var(--muted); }
+.word-legend span { display:inline-flex; align-items:center; gap:5px; }
+.word-legend i { position:relative; width:16px; height:16px; border-radius:3px; }
+.word-keys { display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); gap:4px; }
+.word-keys button { position:relative; min-width:0; min-height:42px; display:grid; place-items:center; border:1px solid var(--line); border-radius:7px; font-weight:800; background:var(--raised); color:var(--text); }
+.word-keys button:hover { border-color:var(--violet); }
+.word-panel [data-mark="exact"] { background:#a2d6b0; color:#112e21; border-color:#80af90; }
+.word-panel [data-mark="present"] { background:#f1c779; color:#322619; border-color:#d5a64e; }
+.word-panel [data-mark="absent"] { background:#585d6d; color:#fff; border-color:#727888; }
+.word-panel [data-mark="exact"]::after,.word-panel [data-mark="present"]::after,.word-panel [data-mark="absent"]::after { content:''; position:absolute; right:3px; bottom:3px; }
+.word-panel [data-mark="exact"]::after { width:7px; height:3px; border-bottom:2px solid; border-left:2px solid; transform:rotate(-45deg); }
+.word-panel [data-mark="present"]::after { width:5px; height:5px; border-radius:50%; background:currentColor; }
+.word-panel [data-mark="absent"]::after { width:6px; border-top:2px solid; }
+.word-controls,.word-tools>.btn-row { margin-top:12px; flex-wrap:wrap; }
+.word-notice,.word-reveal { margin:11px 0; }
+.word-reveal strong { letter-spacing:.06em; }
+@media(max-width:650px){
+  .word-panel { grid-template-columns:minmax(0,1fr); gap:12px; padding:14px; }
+  .word-sheet { padding:8px 10px; }
+  .word-rubric { padding-bottom:5px; margin-bottom:6px; }
+  .word-board { width:min(100%,calc(var(--word-size)*37px)); gap:3px; }
+  .word-row { gap:3px; }
+  .word-keys { grid-template-columns:repeat(9,minmax(0,1fr)); }
+  .word-tools h2 { margin-bottom:4px; }
+  .word-legend { margin:5px 0 9px; }
+}
+@media(max-width:360px){ .word-keys { grid-template-columns:repeat(8,minmax(0,1fr)); } }
+.ladder-slots button { flex:0 1 50px; min-width:0; }
+.ladder-slots { flex-wrap:nowrap; }
