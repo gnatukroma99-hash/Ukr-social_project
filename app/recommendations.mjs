@@ -1,10 +1,16 @@
 // A starting point for each built-in pair. External artwork stays on the source site.
 const pick = (title, meta, cue, url, action, artwork) => ({title, meta, cue, url, action, artwork});
 const art = (image, source, label, alt = '') => ({image, source, label, alt});
+// A centered frame fits the square better than the title-heavy default thumbnail.
+const frames = {
+  XaWb01I0O8k:'maxres1', '8Lgy05JHojc':'maxres2', 'Lv_ge-93xn0':'maxres3', r7Mug7A7RGI:'maxres2', FdlVSh6lzuQ:'maxres1',
+  XXeMGuo17Qk:'maxres3', f9WzBY3NEI4:'maxres2', vUnDHTmZDQU:'oar2', 'U7-dxzp6Jvs':'maxres2',
+  sHILe97zR2I:'maxres2', BB87nZ2Wldg:'maxres3', '8VBDi_p_sf8':'maxres1', OeYtKIATqcw:'maxres3',
+};
 const video = (id, title, time, cue, action = 'Дивитися випуск', thumbnail = 'maxresdefault') => {
   const url = `https://www.youtube.com/watch?v=${id}`;
   return pick(title, `YouTube${time ? ` · ${time}` : ''}`, cue, url, action,
-    thumbnail && art(`https://i.ytimg.com/vi/${id}/${thumbnail}.jpg`, url, 'Прев’ю на YouTube'));
+    thumbnail && art(`https://i.ytimg.com/vi/${id}/${frames[id] || thumbnail}.jpg`, url, 'Прев’ю на YouTube'));
 };
 const steam = (id, title, cue, image) => {
   const url = `https://store.steampowered.com/app/${id}/`;
@@ -22,7 +28,7 @@ const starts = {
   'yt-8': video('Ajl5fHz1_co', 'Як замовити каву українською', '5:56', 'Після діалогу спробуй замовити свій напій без підказки.', 'Слухати урок'),
 
   'sh-1': video('xGWT6j6oO-E', '«Підкати» з Дімкою Носовим', '36:07', 'Почни з підкату: учасник має вигадати репліку для знайомства.', 'Дивитися «Підкати»'),
-  'sh-2': video('ETv5Y4YdkXY', 'Хореографія Віолетти Матюшенко', '6:18', 'Повтори першу танцювальну зв’язку перед дзеркалом.', 'Дивитися хореографію', 'sddefault'),
+  'sh-2': video('ETv5Y4YdkXY', 'Хореографія Віолетти Матюшенко', '6:18', 'Повтори першу танцювальну зв’язку перед дзеркалом.', 'Дивитися хореографію', 'maxres2'),
   'sh-3': video('XXeMGuo17Qk', 'Сирники: солодкі й солоні', '3:55', 'Поглянь, якої густини тісто перед смаженням.', 'Дивитися рецепт'),
   'sh-4': video('zlQH7OAnE5I', '«Концерт №7»', '', 'Послухай перший жарт і зверни увагу на паузу перед кінцівкою.', 'Дивитися стендап', ''),
   'sh-5': video('f9WzBY3NEI4', '«Межиріччя №2»: Харків нульових', '', 'Олег Сердюк згадує харківську сцену й гурт Lюk.', 'Дивитися розмову'),
