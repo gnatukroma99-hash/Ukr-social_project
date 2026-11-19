@@ -4,6 +4,8 @@ import { nextArcadeCard, ROUND_SIZE } from './arcade.mjs';
 import { dayAt, validMonth, safeUrl } from './engine.mjs';
 import { store, persist, state, session, connect, authAction, disconnect, clubApi, refresh, refreshCatalog, rename, startQuestion, submitAnswer, toggleSaved } from './state.mjs';
 import { shell, home, category, savedView, quests, arcadeView, rankView, esc, eyebrow, external } from './views.mjs';
+import { arcadeLobby, isMiniGame, miniPage } from './arcade-views.mjs';
+import { makeMiniArcade } from './arcade-controller.mjs';
 import { profile, authors, menuBody, supportBody, publicIssue } from './community.mjs';
 import { icon } from './icons.mjs';
 
@@ -20,11 +22,14 @@ function signIn(step='start'){
 let task=null, answer=null, busy=false, host=null, queue=null, reveal=false, game=null, ticker=0, gameTouch=null;
 let month=dayAt().slice(0,7), scores=null, rankError='', rankSerial=0, modal=null, toastTimer=0, lastDay=dayAt();
 const route = () => { const [page='home', value='']=(location.hash.slice(1)||'home').split('/'); return {page, value}; };
+const arcadeKind=()=>{const {page,value}=route();return page==='arcade'?value:'';};
+const mini=makeMiniArcade(arcadeKind);
 function notify(message) { clearTimeout(toastTimer);const inside=modal?.querySelector('[data-status]');if(inside){inside.hidden=false;inside.textContent=String(message);inside.scrollIntoView({block:'nearest'});return;}toast.textContent=String(message); toast.hidden=false; toastTimer=setTimeout(()=>{toast.hidden=true;},4400); }
 function draw(focus=false) {
   const {page,value}=route();
   const openComparisons=new Set(focus?[]:Array.from(root.querySelectorAll('[data-pair-compare][open]'),d=>d.dataset.pairCompare));
-  const content = page==='cat'?category(value):page==='saved'?savedView():page==='quests'?quests(task,answer):page==='arcade'?arcadeView(game):page==='rank'?rankView(month,scores,rankError):page==='profile'?profile(host,queue,reveal):page==='authors'?authors():home();
+  const arcade=()=>value==='side'?arcadeView(game):isMiniGame(value)?miniPage(value,mini.game):arcadeLobby();
+  const content = page==='cat'?category(value):page==='saved'?savedView():page==='quests'?quests(task,answer):page==='arcade'?arcade():page==='rank'?rankView(month,scores,rankError):page==='profile'?profile(host,queue,reveal):page==='authors'?authors():home();
   root.innerHTML=shell(page,page==='rank'&&session()?.tournament?tournamentRank():content);
   if(openComparisons.size)for(const d of root.querySelectorAll('[data-pair-compare]'))d.open=openComparisons.has(d.dataset.pairCompare);
   if(page==='profile'&&session()?.tournament){const panel=root.querySelector('.info-panel');panel.innerHTML=`${eyebrow('Шкільний турнір')}<h2>Учасник: ${esc(state().player.name)}</h2><p>На іншому пристрої увійди в той самий акаунт.</p><a class="btn primary" href="#rank">Відкрити рейтинг</a><button class="btn ghost" data-act="disconnect">Вийти з турніру</button>`;}
@@ -46,7 +51,8 @@ function stopClock(){ clearInterval(ticker); ticker=0; }
 function routeChanged() {
   closeModal(); toast.hidden=true; gameTouch=null; ++rankSerial; const {page}=route();
   if(page!=='quests'){task=null;answer=null;}
-  if(page!=='arcade'){stopClock();game=null;}
+  if(arcadeKind()!=='side'){stopClock();game=null;}
+  mini.leave();
   if(page!=='profile'){reveal=false;queue=null;}
   draw(true);
   if(page==='rank') void loadRank();
@@ -69,7 +75,7 @@ async function openUrl(raw) {
 let restoreFocus=null;
 function closeModal(){ if(!modal) return; const d=modal;modal=null;document.body.classList.remove('modal-open');d.remove();if(restoreFocus?.isConnected)restoreFocus.focus({preventScroll:true});restoreFocus=null; }
 function showModal(title,body,kicker='Спільнота') {
-  if(!modal){restoreFocus=document.activeElement;modal=document.createElement('dialog');modal.className='dialog';modal.setAttribute('aria-labelledby','dialog-title');document.body.appendChild(modal);document.body.classList.add('modal-open');
+  if(!modal){mini.pause();restoreFocus=document.activeElement;modal=document.createElement('dialog');modal.className='dialog';modal.setAttribute('aria-labelledby','dialog-title');document.body.appendChild(modal);document.body.classList.add('modal-open');
     modal.addEventListener('cancel',e=>{e.preventDefault();closeModal();});modal.addEventListener('click',e=>{if(e.target!==modal)return;const r=modal.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeModal();});}
   modal.innerHTML=`<div class="dialog-head"><div>${eyebrow(kicker)}<h2 id="dialog-title">${esc(title)}</h2></div><button type="button" class="icon-btn" aria-label="Закрити" data-act="close">${icon('close',19)}</button></div>${body}<p class="notice" role="status" data-status hidden></p>`;
   if(!modal.open){if(typeof modal.showModal==='function')modal.showModal();else modal.setAttribute('open','');}
@@ -81,11 +87,11 @@ function nextTick(){
   stopClock();const {card,rotation}=nextArcadeCard(store.arcadeRotation);
   const g=game;g.deck.push(card);store.arcadeRotation=rotation;persist();
   g.duration=6500-Math.min(g.index,8)*360;g.until=performance.now()+g.duration;draw();
-  const update=()=>{if(game!==g||g.over||route().page!=='arcade'){stopClock();return;}const left=Math.max(0,g.until-performance.now());const bar=document.querySelector('#clock-bar');if(bar)bar.style.transform=`scaleX(${left/g.duration})`;if(!left)pickSide('time');};
+  const update=()=>{if(game!==g||g.over||arcadeKind()!=='side'){stopClock();return;}const left=Math.max(0,g.until-performance.now());const bar=document.querySelector('#clock-bar');if(bar)bar.style.transform=`scaleX(${left/g.duration})`;if(!left)pickSide('time');};
   ticker=setInterval(update,55);
 }
 function pickSide(side){
-  if(!game||game.over||!ticker||route().page!=='arcade'||modal)return;
+  if(!game||game.over||!ticker||arcadeKind()!=='side'||modal)return;
   stopClock();const g=game,[word,language,hint]=g.deck[g.index];const ok=language===side;
   if(ok)g.score++;else g.lives--;g.history.push({word,ok,hint});g.last=`${ok?'Так!':side==='time'?'Час вийшов.':'Не цього разу.'} ${word} · ${language.toUpperCase()}. ${hint}.`;
   g.index++;gameTouch=null;
@@ -110,9 +116,10 @@ document.addEventListener('click',async e=>{
   if(act==='vibe'){store.vibe=el.dataset.value;persist();draw();document.querySelector(`[data-act="vibe"][data-value="${store.vibe}"]`)?.focus({preventScroll:true});return;}
   if(act==='save'){const id=el.dataset.id,added=toggleSaved(id);draw();document.querySelector(`[data-act="save"][data-id="${CSS.escape(id)}"]`)?.focus({preventScroll:true});notify(added?'Пару збережено у профілі.':'Пару вилучено з колекції.');return;}
   if(act==='leave-quest'){task=null;answer=null;draw(true);return;}
-  if(act==='game-start'){startGame();return;}
+  if(act==='game-start'&&arcadeKind()==='side'){startGame();return;}
   if(act==='game-exit'){stopClock();game=null;draw(true);return;}
   if(act==='game-ru'||act==='game-ua'){pickSide(act.slice(-2));return;}
+  if(!modal&&mini.click(act,el.dataset))return;
   if(act==='rank-refresh'){await loadRank();return;}
   if(act==='reveal'){reveal=!reveal;draw();return;}
   if(act==='draft'){const form=document.querySelector('#support-form');if(form){store.draft=Object.fromEntries(new FormData(form));persist();notify('Чернетку збережено на цьому пристрої.');}return;}
@@ -145,8 +152,9 @@ document.addEventListener('submit',e=>{
 document.addEventListener('change',e=>{if(e.target.id==='rank-month'&&validMonth(e.target.value)){month=e.target.value;void loadRank();}});
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&modal){e.preventDefault();closeModal();return;}
-  if(modal||['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)||e.repeat)return;
-  if(route().page==='arcade'&&game&&!game.over&&['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();pickSide(e.key==='ArrowLeft'?'ru':'ua');}
+  if(modal||['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)||e.repeat||e.altKey||e.ctrlKey||e.metaKey)return;
+  if(arcadeKind()==='side'&&game&&!game.over&&['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();pickSide(e.key==='ArrowLeft'?'ru':'ua');}
+  mini.key(e);
   if(route().page==='quests'&&task&&!answer&&/^[1-4]$/.test(e.key))document.querySelector(`[data-act="answer"][data-index="${Number(e.key)-1}"]`)?.click();
 });
 document.addEventListener('pointerdown',e=>{const card=e.target.closest('#swipe-card');if(card&&e.isPrimary){gameTouch={id:e.pointerId,x:e.clientX,y:e.clientY,index:game?.index};card.setPointerCapture?.(e.pointerId);}});
@@ -155,6 +163,6 @@ document.addEventListener('pointercancel',()=>{gameTouch=null;});
 
 async function dayCheck(){const today=dayAt();if(today===lastDay)return;lastDay=today;task=null;answer=null;month=today.slice(0,7);try{await refresh();}catch(e){notify(e.message);}draw();if(route().page==='rank')void loadRank();}
 setInterval(()=>void dayCheck(),15000);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)void dayCheck();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)mini.pause();else void dayCheck();});
 routeChanged();
-if(session())refresh().then(()=>{if(!task&&!game&&!modal)draw();}).catch(e=>notify(e.message));
+if(session())refresh().then(()=>{if(!task&&!game&&!mini.game&&!modal)draw();}).catch(e=>notify(e.message));
