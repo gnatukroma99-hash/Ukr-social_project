@@ -7,7 +7,7 @@ const assert=require('node:assert/strict');
 const folder=mkdtempSync(path.join(tmpdir(),'svoie-ui-'));
 app.setPath('userData',folder);
 const {createWindow,registerClub}=require('../desktop/main.cjs');
-const watchdog=setTimeout(()=>{console.error('Renderer check exceeded 45 seconds');app.exit(1);},45000);
+const watchdog=setTimeout(()=>{console.error('Renderer check timed out');app.exit(1);},process.env.SVOIE_LIVE_ARTWORK==='1'?90000:45000);
 app.whenReady().then(async()=>{
   registerClub();const window=createWindow();window.setContentSize(1280,920);
   const web=window.webContents,errors=[];web.setBackgroundThrottling(false);
@@ -51,7 +51,27 @@ app.whenReady().then(async()=>{
     })()`);
     assert.ok(Math.abs(media.width-media.height)<1 && media.flush && media.radius>0 && media.clip==='hidden' && media.padding==='0px' && media.fit==='cover',JSON.stringify(media));
   };
-  await wait('document.querySelectorAll(".category").length===6');
+  async function checkDirections(){
+    await wait(`document.querySelectorAll('#branches .category img').length===6 && [...document.querySelectorAll('#branches .category img')].every(i=>i.complete && i.naturalWidth>0)`);
+    const photos=await js(`[...document.querySelectorAll('#branches .category')].map(a=>{
+      const img=a.querySelector('img'),box=img.getBoundingClientRect(),title=a.querySelector('h3').getBoundingClientRect();
+      return {id:a.hash.split('/')[1],file:img.src.split('/').pop(),square:Math.abs(box.width-box.height)<1,
+        readable:box.width>=90 && (box.right<=title.left+1 || box.bottom<=title.top+1)};
+    })`);
+    for(const p of photos)assert.ok(p.file===`${p.id}.webp`&&p.square&&p.readable,JSON.stringify(p));
+  }
+  async function checkCatalogImages(){
+    const rows=await js(`(async()=>{
+      const cards=[...document.querySelectorAll('article.pair-preview')];
+      await Promise.all(cards.flatMap(c=>[...c.querySelectorAll('img')].map(i=>{i.loading='eager';return i.decode().catch(()=>{});})));
+      return cards.map(c=>{const source=c.querySelector('.pair-preview-release'),f=c.querySelector('figure');
+        return {id:c.querySelector('[data-pair-compare]').dataset.pairCompare,local:c.querySelector('.pair-preview-cover').naturalWidth,
+          source:source?.naturalWidth||0,shown:f.classList.contains('has-release'),credit:getComputedStyle(f.querySelector('.pair-preview-credit')).display!=='none'};});
+    })()`);
+    assert.equal(rows.length,8);
+    for(const r of rows)assert.ok(r.local>=320&&(r.source>=160)===liveArtwork&&r.shown===liveArtwork&&r.credit===liveArtwork,JSON.stringify(r));
+  }
+  await checkDirections();
   const screen=process.env.SVOIE_SCREENSHOTS;
   async function capture(name,selector){
     if(!screen)return;
@@ -67,6 +87,7 @@ app.whenReady().then(async()=>{
     writeFileSync(path.join(screen,name+'.png'),(await web.capturePage(rect,{stayHidden:true,stayAwake:true})).toPNG());console.log('Captured '+name);
   }
   await capture('desktop-home');
+  await capture('directions-desktop','#branches');
   await click('a[href="#cat/music"]');await wait(hasText('.pairs','SadSvit'));
   const comparison='.pair-preview details';
   await checkCover(liveArtwork);
@@ -80,7 +101,7 @@ app.whenReady().then(async()=>{
   await click('[data-value="world"]');await wait(hasText('.pairs','DakhaBrakha'));
   assert.equal(await js('document.querySelectorAll("article.pair").length'),catalog.filter(p=>p.category==='music'&&p.vibe==='world').length);
   assert.ok(!await js(hasText('.pairs','SadSvit')));
-  await click('[data-value="all"]');await capture('music');await go('saved');await wait(hasText('.pair-preview','SadSvit'));
+   await click('[data-value="all"]');await checkCatalogImages();await capture('music');await go('saved');await wait(hasText('.pair-preview','SadSvit'));
   await go('profile');await click('[data-act="host-start"]');await wait(hasText('.info-panel','Мій клуб'));
   await go('quests');await click('[data-act="start"]');await wait('document.querySelectorAll(".choice").length===4');await capture('quest');
   for(let i=0;i<5;i++){
@@ -208,7 +229,7 @@ app.whenReady().then(async()=>{
   }
   for(const [category,id] of Object.entries({youtube:'yt-1',shorts:'sh-7',instagram:'in-5',art:'ar-7',games:'gm-7'})){
     await go('cat/'+category);
-    assert.equal(await js('document.querySelectorAll("article.pair-preview").length'),8);
+    await checkCatalogImages();
     assert.ok(await js('document.documentElement.scrollWidth<=innerWidth'));
     const sel=`article:has([data-pair-compare="${id}"])`;
     await js(`document.querySelector(${JSON.stringify(sel)}).scrollIntoView({block:'center',behavior:'instant'})`);
@@ -216,7 +237,8 @@ app.whenReady().then(async()=>{
     if(liveArtwork)await wait(`document.querySelector(${JSON.stringify(sel+' .has-release')})`);
     await capture('catalog-'+category,sel);
   }
-  await go('home');await capture('mobile-home');
+  await go('home');await checkDirections();await capture('mobile-home');
+  await capture('direction-mobile','.category[href="#cat/instagram"]');
   assert.ok(await js('document.documentElement.scrollWidth<=innerWidth'));
   await click('.mobile-nav [data-act="menu"]');await wait('document.querySelector("dialog[open]")');await click('dialog a[href="#authors"]');await wait(hasText('.page-head','Автори'));
   await web.reload();await new Promise(resolve=>web.once('did-finish-load',resolve));await go('saved');await checkCover(liveArtwork);

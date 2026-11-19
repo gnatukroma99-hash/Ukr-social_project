@@ -53,6 +53,9 @@
   object-fit: cover;
 }
 .pair-preview-release { opacity: 0; }
+.pair-preview-release[data-focus="top"] { object-position:center top; }
+.pair-preview-release[data-focus="left"] { object-position:20% center; }
+.pair-preview-release[data-focus="right"] { object-position:80% center; }
 .pair-preview-credit { display: none; }
 .pair-preview-visual.has-release .pair-preview-cover { visibility: hidden; }
 .pair-preview-visual.has-release .pair-preview-release { opacity: 1; }

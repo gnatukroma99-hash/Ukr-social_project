@@ -52,7 +52,7 @@ function pairCard(p) {
     <figure class="pair-preview-visual">
       <div class="pair-preview-media">
         <img class="pair-preview-cover" src="./assets/covers/${encodeURIComponent(cover)}" width="640" height="640" alt="" loading="lazy" decoding="async">
-        ${releaseImage ? `<img class="pair-preview-release" src="${esc(releaseImage)}" alt="${esc(artwork.alt)}" aria-hidden="true" referrerpolicy="no-referrer" loading="lazy" decoding="async">` : ''}
+        ${releaseImage ? `<img class="pair-preview-release" data-focus="${esc(artwork.focus)}" src="${esc(releaseImage)}" alt="${esc(artwork.alt)}" aria-hidden="true" referrerpolicy="no-referrer" loading="lazy" decoding="async">` : ''}
       </div>
       ${releaseImage ? `<figcaption class="pair-preview-credit">${external(artwork.source,artwork.label,'text-link')}</figcaption>` : ''}
     </figure>
