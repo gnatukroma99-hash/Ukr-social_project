@@ -13,3 +13,12 @@ python design/photocraft/build.py "/path/to/photocraft-cli"
 Скрипт створює шари через команду PhotoCraft `shape.create`, зберігає `.pcraft` і експортує з нього PNG. Після експорту виконай `npm run build:ui`.
 
 Для картки SadSvit відкрий [постер «Касета»](editable/sadsvit-kaseta.pcraft). Застосунок показує його без мережі або якщо [обкладинка релізу на Bandcamp](https://sadsvit.bandcamp.com/track/--2) не завантажилась. Щоб відтворити постер і експортувати його в `app/assets/covers/`, виконай `python design/photocraft/build_kaseta.py "/path/to/photocraft-cli"`.
+
+Квадратні обкладинки каталогу лежать у `app/assets/covers/`. Генератор відтворює їх у PhotoCraft:
+
+```sh
+python design/photocraft/build_covers.py "/path/to/photocraft-cli"
+python design/photocraft/build_covers.py "/path/to/photocraft-cli" yt-1 --editable
+```
+
+Друга команда також зберігає шари обраної обкладинки у `editable/cover-yt-1.pcraft`.
