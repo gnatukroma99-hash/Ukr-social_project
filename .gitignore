@@ -9,6 +9,10 @@ server/data/
 *.sqlite-shm
 *.jks
 *.keystore
+*.p12
+*.pfx
+*.clixml
+*.pass.dpapi
 android/capacitor-cordova-android-plugins/
 android/app/src/main/assets/public/
 android/app/src/main/assets/capacitor.config.json

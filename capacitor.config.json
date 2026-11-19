@@ -3,6 +3,6 @@
   "appName": "Поважайте своє",
   "webDir": "app",
   "backgroundColor": "#13121a",
-  "android": { "backgroundColor": "#13121a" },
+  "android": { "backgroundColor": "#13121a", "adjustMarginsForEdgeToEdge": "auto" },
   "ios": { "backgroundColor": "#13121a" }
 }
