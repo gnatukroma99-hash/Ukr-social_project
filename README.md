@@ -8,7 +8,7 @@
 
 ## Встановлення
 
-- **Android:** [завантаж APK](https://github.com/gnatukroma99-hash/Ukr-social_project/raw/refs/heads/main/downloads/Povazhaite-Svoie-Android.apk), відкрий його на телефоні й підтвердь встановлення. Це тестова версія для Android 6 і новіших з актуальним Android System WebView.
+- **Android:** [завантаж APK із релізу](https://github.com/gnatukroma99-hash/Ukr-social_project/releases/latest/download/Povazhaite-Svoie-Android.apk), відкрий його на телефоні й підтвердь встановлення. Це тестова версія для Android 6 і новіших з актуальним Android System WebView.
 - **Windows 10/11, x64:** [завантаж ZIP із релізу](https://github.com/gnatukroma99-hash/Ukr-social_project/releases/latest/download/Povazhaite-Svoie-Windows-x64.zip), **розпакуй усю папку** й запусти `PovazhaiteSvoie.exe`.
 - **iPhone:** у `ios/` є проєкт Xcode. Для встановлення на пристрій потрібні macOS і підпис Apple. Інструкція нижче.
 
@@ -45,7 +45,7 @@ npm start
 
 Якщо npm пропустив встановлення Electron, виконай `node node_modules/electron/install.js`. `npm run windows` збере папку `release/PovazhaiteSvoie-win32-x64`. `node node_modules/electron/cli.js tools/check-ui.cjs` перевірить інтерфейс в окремому тимчасовому профілі; для цього потрібні графічна сесія та вільний порт 4387.
 
-**Android:** встанови JDK 21 та Android SDK 35. Задай `JAVA_HOME` і `ANDROID_HOME`, виконай `npm run android:sync`, далі `cd android` і `./gradlew assembleDebug` (у Windows: `.\gradlew.bat assembleDebug`). APK з’явиться у `android/app/build/outputs/apk/debug/`. Опублікована тестова збірка може мати інший підпис, ніж локальна.
+**Android:** встанови JDK 21 та Android SDK 36. Задай `JAVA_HOME` і `ANDROID_HOME`, виконай `npm run android:sync`, далі `cd android` і `./gradlew assembleDebug` (у Windows: `.\gradlew.bat assembleDebug`). APK з’явиться у `android/app/build/outputs/apk/debug/`. Опублікована тестова збірка може мати інший підпис, ніж локальна.
 
 **iOS:** на Mac виконай `npm ci`, `npm run ios:sync` та `npx cap open ios`. Вибери свою команду в **Signing & Capabilities** і запусти проєкт на симуляторі або підключеному iPhone. Перевірку на фізичному iPhone ще не проводили.
 

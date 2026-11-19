@@ -37,4 +37,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$env:GITHUB_REF_NAME" './release/Povazhaite-Svoie-Windows-x64.zip' './downloads/Povazhaite-Svoie-Android.apk' --title "Поважайте своє $env:GITHUB_REF_NAME" --notes "Android: встановіть APK. Windows x64: розпакуйте ZIP і запустіть PovazhaiteSvoie.exe."
+          $notesPath = "docs/releases/$env:GITHUB_REF_NAME.md"
+          $notes = if (Test-Path -LiteralPath $notesPath -PathType Leaf) {
+            @('--notes-file', $notesPath)
+          } else {
+            @('--notes', 'Android: встановіть APK. Windows x64: розпакуйте ZIP і запустіть PovazhaiteSvoie.exe.')
+          }
+          gh release create "$env:GITHUB_REF_NAME" './release/Povazhaite-Svoie-Windows-x64.zip' './downloads/Povazhaite-Svoie-Android.apk' --verify-tag --title "Поважайте своє $env:GITHUB_REF_NAME" @notes
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
