@@ -22,6 +22,6 @@ export const LEVELS = {
 export const GAMES=['side','letters','frames','ladder'];
 export const FRAME_ALBUMS={catalog:'Каталог',art:'Ілюстрації'};
 export const DEFAULT_ALBUM='catalog';
-export const isLevel=level=>Object.hasOwn(LEVELS,level);
-export const isAlbum=album=>Object.hasOwn(FRAME_ALBUMS,album);
+export const isLevel=level=>Object.prototype.hasOwnProperty.call(LEVELS,level);
+export const isAlbum=album=>Object.prototype.hasOwnProperty.call(FRAME_ALBUMS,album);
 export const sideDuration=(level,index)=>LEVELS[level].side.time-Math.min(index,8)*LEVELS[level].side.step;

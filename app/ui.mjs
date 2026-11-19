@@ -1,10 +1,11 @@
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { nextArcadeCard, ROUND_SIZE } from './arcade.mjs';
+import { GAMES, LEVELS, isAlbum, isLevel, sideDuration } from './arcade-levels.mjs';
 import { dayAt, validMonth, safeUrl } from './engine.mjs';
-import { store, persist, state, session, connect, authAction, disconnect, clubApi, refresh, refreshCatalog, rename, startQuestion, submitAnswer, toggleSaved } from './state.mjs';
-import { shell, home, category, savedView, quests, arcadeView, rankView, esc, eyebrow, external } from './views.mjs';
-import { arcadeLobby, isMiniGame, miniPage } from './arcade-views.mjs';
+import { store, persist, state, session, connect, authAction, disconnect, clubApi, refresh, refreshCatalog, rename, startQuestion, submitAnswer, toggleSaved, arcadeProgress, persistArcade } from './state.mjs';
+import { shell, home, category, savedView, quests, rankView, esc, eyebrow, external } from './views.mjs';
+import { arcadeLobby, miniPage } from './arcade-views.mjs';
 import { makeMiniArcade } from './arcade-controller.mjs';
 import { profile, authors, menuBody, supportBody, publicIssue } from './community.mjs';
 import { icon } from './icons.mjs';
@@ -28,7 +29,7 @@ function notify(message) { clearTimeout(toastTimer);const inside=modal?.querySel
 function draw(focus=false) {
   const {page,value}=route();
   const openComparisons=new Set(focus?[]:Array.from(root.querySelectorAll('[data-pair-compare][open]'),d=>d.dataset.pairCompare));
-  const arcade=()=>value==='side'?arcadeView(game):isMiniGame(value)?miniPage(value,mini.game):arcadeLobby();
+  const arcade=()=>GAMES.includes(value)?miniPage(value,value==='side'?game:mini.game):arcadeLobby();
   const content = page==='cat'?category(value):page==='saved'?savedView():page==='quests'?quests(task,answer):page==='arcade'?arcade():page==='rank'?rankView(month,scores,rankError):page==='profile'?profile(host,queue,reveal):page==='authors'?authors():home();
   root.innerHTML=shell(page,page==='rank'&&session()?.tournament?tournamentRank():content);
   if(openComparisons.size)for(const d of root.querySelectorAll('[data-pair-compare]'))d.open=openComparisons.has(d.dataset.pairCompare);
@@ -82,11 +83,17 @@ function showModal(title,body,kicker='Спільнота') {
 }
 function support(tab='feedback'){showModal('Підтримка',supportBody(tab,route().page==='cat'?route().value:'youtube'));}
 
-function startGame(){stopClock();game={deck:[],index:0,score:0,lives:3,history:[],over:false,last:''};nextTick();}
+function startGame(){
+  stopClock();const level=arcadeProgress.levels.side;
+  game={level,deck:[],index:0,score:0,lives:LEVELS[level].side.lives,history:[],over:false,last:''};nextTick();
+}
 function nextTick(){
-  stopClock();const {card,rotation}=nextArcadeCard(store.arcadeRotation);
-  const g=game;g.deck.push(card);store.arcadeRotation=rotation;persist();
-  g.duration=6500-Math.min(g.index,8)*360;g.until=performance.now()+g.duration;draw();
+  stopClock();const g=game, record=arcadeProgress.byLevel[g.level];
+  const {card,rotation}=nextArcadeCard(record.sideRotation,g.level);
+  g.deck.push(card);record.sideRotation=rotation;persistArcade();
+  const prior=document.activeElement?.dataset.act;
+  g.duration=sideDuration(g.level,g.index);g.until=performance.now()+g.duration;draw();
+  if(prior==='game-ua'||prior==='game-ru')root.querySelector(`[data-act="${prior}"]`)?.focus({preventScroll:true});
   const update=()=>{if(game!==g||g.over||arcadeKind()!=='side'){stopClock();return;}const left=Math.max(0,g.until-performance.now());const bar=document.querySelector('#clock-bar');if(bar)bar.style.transform=`scaleX(${left/g.duration})`;if(!left)pickSide('time');};
   ticker=setInterval(update,55);
 }
@@ -95,7 +102,7 @@ function pickSide(side){
   stopClock();const g=game,[word,language,hint]=g.deck[g.index];const ok=language===side;
   if(ok)g.score++;else g.lives--;g.history.push({word,ok,hint});g.last=`${ok?'Так!':side==='time'?'Час вийшов.':'Не цього разу.'} ${word} · ${language.toUpperCase()}. ${hint}.`;
   g.index++;gameTouch=null;
-  if(!g.lives||g.index===ROUND_SIZE){g.over=true;g.summary=g.lives?'Усі десять карток пройдено.':'Життя скінчилися.';store.best=Math.max(store.best,g.score);persist();draw();}
+  if(!g.lives||g.index===ROUND_SIZE){g.over=true;g.summary=g.lives?'Ти пройшов десять карток.':'Життя скінчилися.';const r=arcadeProgress.byLevel[g.level];r.sideBest=Math.max(r.sideBest,g.score);persistArcade();draw();root.querySelector('.mini-focus')?.focus({preventScroll:true});}
   else nextTick();
 }
 
@@ -117,7 +124,14 @@ document.addEventListener('click',async e=>{
   if(act==='save'){const id=el.dataset.id,added=toggleSaved(id);draw();document.querySelector(`[data-act="save"][data-id="${CSS.escape(id)}"]`)?.focus({preventScroll:true});notify(added?'Пару збережено у профілі.':'Пару вилучено з колекції.');return;}
   if(act==='leave-quest'){task=null;answer=null;draw(true);return;}
   if(act==='game-start'&&arcadeKind()==='side'){startGame();return;}
-  if(act==='game-exit'){stopClock();game=null;draw(true);return;}
+  if(act==='arcade-settings'&&GAMES.includes(arcadeKind())){stopClock();game=null;mini.leave();draw(true);root.querySelector('[data-act="arcade-level"][aria-pressed="true"]')?.focus();return;}
+  if((act==='arcade-level'||act==='frame-album')&&!modal&&!game&&!mini.game){
+    const kind=arcadeKind(),value=el.dataset.value;
+    if(act==='arcade-level'&&GAMES.includes(kind)&&isLevel(value))arcadeProgress.levels[kind]=value;
+    else if(act==='frame-album'&&kind==='frames'&&isAlbum(value))arcadeProgress.album=value;
+    else return;
+    persistArcade();draw();root.querySelector(`[data-act="${act}"][aria-pressed="true"]`)?.focus({preventScroll:true});return;
+  }
   if(act==='game-ru'||act==='game-ua'){pickSide(act.slice(-2));return;}
   if(!modal&&mini.click(act,el.dataset))return;
   if(act==='rank-refresh'){await loadRank();return;}

@@ -13,6 +13,8 @@ app.whenReady().then(async()=>{
   const web=window.webContents,errors=[];web.setBackgroundThrottling(false);
   const {catalog}=await import('../app/catalog.mjs');
   const {dropWords}=await import('../app/minigame-data.mjs');
+  const {arcadeDecks}=await import('../app/arcade.mjs');
+  const {frameDecks,ladderDecks}=await import('../app/minigames.mjs');
   const artworkUrls=new Set(catalog.flatMap(p=>p.preview.artwork?[p.preview.artwork.image]:[]));
   const liveArtwork=process.env.SVOIE_LIVE_ARTWORK==='1';
   if(!liveArtwork)web.session.webRequest.onBeforeRequest({urls:['https://*/*']},(details,reply)=>reply({cancel:artworkUrls.has(details.url)}));
@@ -93,12 +95,23 @@ app.whenReady().then(async()=>{
   await wait('!document.querySelector("dialog")');await go('profile');await click('[data-act="review"]');await click('[data-act="approve"]');
   await go('cat/youtube');await wait(hasText('.pairs','Автор Б'));
    await go('arcade');await wait('document.querySelectorAll(".arcade-card").length===4');await capture('arcade-desktop');
-   await click('.arcade-card-side');await click('[data-act="game-start"]');await wait('document.querySelector("#swipe-card")');
-   await js(`document.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true}))`);await wait(hasText('.quiz-header','2 / 10'));
    const readKeys=keys=>js(`{const s=JSON.parse(localStorage.getItem('svoie.v1'));Object.fromEntries(${JSON.stringify(keys)}.map(k=>[k,s[k]]));}`);
-   const protectedKeys=['sessions','played','days','saved','best','arcadeRotation'];
+   const protectedKeys=['sessions','played','days','saved','best','arcadeRotation','miniRecords'];
    const beforeArcade=await readKeys(protectedKeys);
+   const arcade=()=>js('JSON.parse(localStorage.getItem("svoie.arcade.v2"))');
+   const chooseLevel=level=>click(`[data-act="arcade-level"][data-value="${level}"]`);
    const key=key=>js(`document.dispatchEvent(new KeyboardEvent('keydown',{key:${JSON.stringify(key)},bubbles:true}))`);
+   await click('.arcade-card-side');await chooseLevel('easy');await click('[data-act="game-start"]');
+   await wait(hasText('.quiz-header','життя: 5'));
+   for(let i=0;i<10;i++){
+     const word=await js('document.querySelector("#swipe-card h2").textContent');
+     await key(arcadeDecks.easy.find(c=>c[0]===word)[1]==='ua'?'ArrowRight':'ArrowLeft');
+   }
+   await wait(hasText('.mini-result h2','10 / 10'));
+   assert.equal((await arcade()).byLevel.easy.sideBest,10);
+   assert.equal((await arcade()).byLevel.normal.sideBest,0);
+   await click('[data-act="arcade-settings"]');await chooseLevel('hard');await click('[data-act="game-start"]');
+   await wait(hasText('.quiz-header','життя: 2'));
    await go('arcade/letters');await click('[data-act="mini-start"]');
    await wait('parseFloat(document.querySelector("#drop-board")?.style.getPropertyValue("--fall"))>1');
    const firstClue=await js('document.querySelector(".drop-clue h2").textContent');
@@ -115,6 +128,15 @@ app.whenReady().then(async()=>{
    for(let i=0;i<2;i++)await click(`[data-act="drop-pick"][data-index="${((await lane(nextWord[0]))+1)%3}"]`);
    await wait(hasText('.mini-top','Життя: 1'));
    await wait(hasText('.mini-result','1 / 5 слів'));
+   await click('[data-act="arcade-settings"]');await chooseLevel('easy');await click('[data-act="mini-start"]');
+   await wait('document.querySelectorAll(".drop-lane").length===2');await wait(hasText('.mini-top','Життя: 5'));
+   await go('arcade');await go('arcade/letters');await chooseLevel('hard');await click('[data-act="mini-start"]');
+   await wait('document.querySelectorAll(".drop-lane").length===4');await wait(hasText('.mini-top','Життя: 2'));
+   const hardClue=await js('document.querySelector(".drop-clue h2").textContent');
+   const [hardWord]=dropWords.find(([,clue])=>clue===hardClue);
+   assert.ok(hardWord.length>=7);
+   const fourth=await lane(hardWord[0])===3;
+   await key('4');await wait(fourth?hasText('.drop-foot','Є літера'):hasText('.mini-top','Життя: 1'));
    await go('arcade/frames');await click('[data-act="mini-start"]');
    await wait('document.querySelectorAll(".frame-tile").length===8 && document.querySelector(".frame-image img").naturalWidth>0');
    await js('window.openedArt=document.querySelector(".frame-image img")');
@@ -130,22 +152,54 @@ app.whenReady().then(async()=>{
      await click('[data-act="frame-next"]');
    }
    await wait(hasText('.mini-result h2','44 / 45'));
+   await click('[data-act="arcade-settings"]');await chooseLevel('hard');await click('[data-act="frame-album"][data-value="art"]');
+   await capture('frames-setup-desktop');await click('[data-act="mini-start"]');
+   await wait('document.querySelectorAll(".frame-tile").length===15 && document.querySelectorAll(".frame-choice").length===4 && document.querySelector(".frame-image img").naturalWidth===352');
+   let artScore=0;
+   for(let i=0;i<5;i++){
+     const id=await js('document.querySelector(".frame-board").dataset.frameId');
+     const {title}=frameDecks.art.find(p=>p.id===id);
+     const index=await js(`Array.from(document.querySelectorAll('.frame-choice b'),el=>el.textContent).indexOf(${JSON.stringify(title)})`);
+     const chosen=i===0?3:index;
+     if(chosen===index)artScore+=16;
+     await key(String(chosen+1));await wait(hasText('.frame-details h2',title));
+     assert.ok(await js('document.querySelector(".frame-local-credit") && !document.querySelector(".frame-details a")'));
+     await click('[data-act="frame-next"]');
+   }
+   await wait(hasText('.mini-result h2',`${artScore} / 80`));
    await go('arcade/ladder');await click('[data-act="mini-start"]');
    await click('[data-act="ladder-letter"][data-letter="Ї"]');await wait(hasText('.ladder-feedback','немає у словнику'));
    await click('[data-act="ladder-hint"]');await wait(hasText('.ladder-feedback','заміни «І» на «У»'));
    await click('[data-act="ladder-letter"][data-letter="У"]');await wait(hasText('.ladder-chain li:last-child','КУТ'));
    await click('[data-act="ladder-undo"]');await wait(hasText('.ladder-chain li:last-child','КІТ'));
    await key('у');await key('ArrowLeft');await key('т');await wait(hasText('.mini-result h2','Ланцюжок готовий'));
+   await click('[data-act="arcade-settings"]');await chooseLevel('hard');await click('[data-act="mini-start"]');
+   await wait(hasText('.ladder-goal',ladderDecks.hard[0].target.toLocaleUpperCase('uk')));
+   await click('[data-act="arcade-settings"]');await chooseLevel('normal');await wait(hasText('.mini-start-row','1 / 44'));
    assert.deepEqual(await readKeys(protectedKeys),beforeArcade);
-   assert.deepEqual(await readKeys(['miniRecords']),{miniRecords:{letters:1,frames:44,ladder:{'кіт-тут':2},puzzle:0}});
+   const records=(await arcade()).byLevel;
+   assert.equal(records.normal.lettersBest,1);
+   assert.deepEqual(records.normal.frameBest,{catalog:44,art:0});
+   assert.deepEqual(records.hard.frameBest,{catalog:0,art:artScore});
+   assert.deepEqual(records.normal.ladderBest,{'кіт-тут':2});
   await go('profile');await click('[data-act="host-stop"]');await wait(hasText('.info-panel','Приєднатися до клубу'));
-  window.setContentSize(390,844);await go('cat/music');await checkCover(liveArtwork);
+  if(window.isMaximized()){
+    const restored=new Promise(resolve=>window.once('unmaximize',resolve));
+    window.unmaximize();await restored;
+  }
+  window.setContentSize(390,844);
+  await wait('innerWidth>=360 && innerWidth<=420');
+  await go('cat/music');await checkCover(liveArtwork);
   const phoneWidth=await js('innerWidth');assert.ok(phoneWidth>=360&&phoneWidth<=420,`Expected phone viewport, got ${phoneWidth}px`);
   assert.ok(await js('document.documentElement.scrollWidth<=innerWidth && document.querySelector(".pair-preview-cover").getBoundingClientRect().bottom < document.querySelector(".pair-preview h3").getBoundingClientRect().top'));
   await capture('kaseta-mobile','.pair-preview');
   await go('arcade');await capture('arcade-mobile');
   for(const kind of ['letters','frames','ladder']){
-    await click(`.arcade-card-${kind}`);await click('[data-act="mini-start"]');
+    await click(`.arcade-card-${kind}`);
+    await wait('document.querySelector(".mini-setup")');
+    assert.ok(await js('document.documentElement.scrollWidth<=innerWidth'));
+    if(kind==='frames') await capture('frames-setup-mobile');
+    await click('[data-act="mini-start"]');
     assert.ok(await js('document.documentElement.scrollWidth<=innerWidth'));
     if(kind==='letters')await capture('letters-mobile');
     if(kind==='frames')await capture('frames-mobile');
@@ -166,7 +220,10 @@ app.whenReady().then(async()=>{
   assert.ok(await js('document.documentElement.scrollWidth<=innerWidth'));
   await click('.mobile-nav [data-act="menu"]');await wait('document.querySelector("dialog[open]")');await click('dialog a[href="#authors"]');await wait(hasText('.page-head','Автори'));
   await web.reload();await new Promise(resolve=>web.once('did-finish-load',resolve));await go('saved');await checkCover(liveArtwork);
-  await go('arcade');await wait(hasText('.arcade-card-ladder','1 / 14'));await wait(hasText('.arcade-card-letters','1 / 5'));await wait(hasText('.arcade-card-frames','44 / 45'));
-  assert.deepEqual(errors,[]);console.log('Desktop and phone layouts, club scoring, all four arcade games, offline art and persistent local records: OK');
+  await go('arcade');await wait(hasText('.arcade-card-ladder','1 / 44'));await wait(hasText('.arcade-card-letters','Складно'));await wait(hasText('.arcade-card-frames',`${artScore} / 80`));
+  await click('.arcade-card-frames');
+  await wait('document.querySelector(\'[data-value="art"][aria-pressed="true"]\')');
+  await click('[data-act="frame-album"][data-value="catalog"]');await chooseLevel('normal');await wait(hasText('.mini-start-row','44 / 45'));
+  assert.deepEqual(errors,[]);console.log('Desktop and phone layouts, difficulty settings, both frame albums, local records and club scoring: OK');
   clearTimeout(watchdog);app.exit(0);
 }).catch(err=>{console.error(err.message);app.exit(1);});

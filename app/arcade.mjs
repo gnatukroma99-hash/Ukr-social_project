@@ -1,4 +1,6 @@
 import { arcadeItems as starterCards } from './data.mjs';
+import { moreSidePairs } from './arcade-words.mjs';
+import { DEFAULT_LEVEL } from './arcade-levels.mjs';
 
 // The first form is Ukrainian, the second is Russian. Use a phrase where a
 // single word (e.g. «мука» or «гребля») could belong to either language.
@@ -121,16 +123,22 @@ const pairs = [
   ['Збагнути','Уразуметь','Зрозуміти зміст або причину'],
 ];
 
-const cards = [...starterCards, ...pairs.flatMap(([ua,ru,hint])=>[
+const pairCards = source => source.flatMap(([ua,ru,hint])=>[
   [ua,'ua',hint], [ru,'ru',`Українською: ${ua.toLocaleLowerCase('uk')}`],
-])];
-const byWord = new Map(cards.map(card=>[card[0],card]));
+]);
+export const arcadeDecks = {
+  easy:pairCards(moreSidePairs.easy),
+  normal:[...starterCards,...pairCards([...pairs,...moreSidePairs.normal])],
+  hard:pairCards(moreSidePairs.hard),
+};
+const lookup=Object.fromEntries(Object.entries(arcadeDecks).map(([level,cards])=>[level,new Map(cards.map(card=>[card[0],card]))]));
 const concept = ([word,lang,hint])=>(lang==='ru'?hint.replace(/^Українською: /,''):word).toLocaleLowerCase('uk');
-export const arcadeSize = cards.length;
+export const arcadeSize = Object.values(arcadeDecks).reduce((n,cards)=>n+cards.length,0);
 export const ROUND_SIZE = 10;
 
 /** Only deal the currently visible card; quitting a round doesn't skip unseen words. */
-export function nextArcadeCard(rotation, random = Math.random) {
+export function nextArcadeCard(rotation, level = DEFAULT_LEVEL, random = Math.random) {
+  const cards=arcadeDecks[level], byWord=lookup[level];
   const known = list=>Array.isArray(list)?list.filter(word=>byWord.has(word)):[];
   let seen = new Set(known(rotation?.seen));
   if (seen.size === cards.length) seen.clear();

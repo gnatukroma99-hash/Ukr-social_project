@@ -1,7 +1,7 @@
-import { store, persist } from './state.mjs';
+import { arcadeProgress, persistArcade } from './state.mjs';
 import { currentLadder, isMiniGame, miniStage } from './arcade-views.mjs';
 import {
-  ALPHABET, FRAME_ROUNDS, FRAME_TILES, ladderPuzzles, ladderWord, dropDuration,
+  ALPHABET, FRAME_ROUNDS, frameTileCount, ladderDecks, ladderWord, dropDuration,
   newDropGame, catchLetter, newFrameGame, uncoverFrame, guessFrame, nextFrame,
   newLadderGame, selectLadderSlot, changeLadderLetter, undoLadder, hintLadder,
 } from './minigames.mjs';
@@ -36,17 +36,20 @@ export function makeMiniArcade(activeKind) {
   }
 
   function saveRecord(g) {
-    const records=store.miniRecords;
-    if(g.kind==='letters' && g.over && g.solved>records.letters) records.letters=g.solved;
-    else if(g.kind==='frames' && g.answers.length===FRAME_ROUNDS && g.score>records.frames) records.frames=g.score;
-    else if(g.kind==='ladder' && g.over && g.path.length-1<(records.ladder[g.puzzle.id]??Infinity)) records.ladder[g.puzzle.id]=g.path.length-1;
-    else return;
-    persist();
+    const r=arcadeProgress.byLevel[g.level];
+    if(g.kind==='letters' && g.over && g.solved>r.lettersBest) r.lettersBest=g.solved;
+    else if(g.kind==='frames' && g.answers.length===FRAME_ROUNDS && g.score>r.frameBest[g.album]) r.frameBest[g.album]=g.score;
+    else if(g.kind==='ladder' && g.over && g.path.length-1<(r.ladderBest[g.puzzle.id]??Infinity)) r.ladderBest[g.puzzle.id]=g.path.length-1;
+    else return false;
+    return true;
   }
   function show(next, focus='') {
     if(next===game) return;
+    const dealt=next.seen && next.seen!==game?.seen;
     game=next;
-    saveRecord(game);
+    if(dealt && next.kind==='letters')arcadeProgress.byLevel[next.level].dropSeen=next.seen;
+    if(dealt && next.kind==='frames')arcadeProgress.frameSeen[next.album]=next.seen;
+    if(saveRecord(next)||dealt)persistArcade();
     render(next.over?'.mini-focus':focus);
   }
 
@@ -86,10 +89,11 @@ export function makeMiniArcade(activeKind) {
   }
   function start(kind) {
     stop();
+    const {levels,album,frameSeen,byLevel}=arcadeProgress, level=levels[kind];
     if(kind==='letters') {
-      show({...newDropGame(),paused:document.hidden},'.mini-focus');
+      show({...newDropGame(level,byLevel[level].dropSeen),paused:document.hidden},'.mini-focus');
       remaining=dropDuration(game);arm();
-    } else show(kind==='frames'?newFrameGame():newLadderGame(currentLadder()),'.mini-focus');
+    } else show(kind==='frames'?newFrameGame(level,album,frameSeen[album]):newLadderGame(currentLadder(level)),'.mini-focus');
   }
   function click(action, data) {
     const kind=activeKind();
@@ -107,7 +111,7 @@ export function makeMiniArcade(activeKind) {
     } else if(kind==='frames') {
       if(action==='frame-open'){
         const next=uncoverFrame(game,index);
-        if(next!==game) show(next,next.open.length===FRAME_TILES?'[data-act="frame-guess"]':'[data-act="frame-open"]');
+        if(next!==game) show(next,next.open.length===frameTileCount(game.level)?'[data-act="frame-guess"]':'[data-act="frame-open"]');
         return true;
       }
       if(action==='frame-guess'){show(guessFrame(game,index),'.mini-focus');return true;}
@@ -118,17 +122,18 @@ export function makeMiniArcade(activeKind) {
       if(action==='ladder-hint'){show(hintLadder(game));return true;}
       if(action==='ladder-undo'){show(undoLadder(game),'[data-act="ladder-slot"][aria-pressed="true"]');return true;}
       if(action==='ladder-next'){
-        store.miniRecords.puzzle=(ladderPuzzles.indexOf(game.puzzle)+1)%ladderPuzzles.length;
-        persist();start(kind);return true;
+        const deck=ladderDecks[game.level];
+        arcadeProgress.byLevel[game.level].ladderIndex=(deck.indexOf(game.puzzle)+1)%deck.length;
+        persistArcade();start(kind);return true;
       }
     }
     return false;
   }
   function key(event) {
     if(!active() || game.over) return;
-    const key=event.key;
-    if(game.kind==='letters' && !game.paused && /^[1-3]$/.test(key)){event.preventDefault();pick(Number(key)-1);}
-    if(game.kind==='frames' && !game.answers[game.round] && /^[1-3]$/.test(key)){event.preventDefault();show(guessFrame(game,Number(key)-1),'.mini-focus');}
+    const key=event.key, index=/^[1-4]$/.test(key)?Number(key)-1:-1;
+    if(game.kind==='letters' && !game.paused && game.letters[index]){event.preventDefault();pick(index);}
+    if(game.kind==='frames' && !game.answers[game.round] && game.deck[game.round].choices[index]){event.preventDefault();show(guessFrame(game,index),'.mini-focus');}
     if(game.kind==='ladder') {
       if(key==='ArrowLeft' || key==='ArrowRight'){
         event.preventDefault();

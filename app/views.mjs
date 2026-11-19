@@ -1,6 +1,5 @@
 import { icon, clueMarkup, categoryArt } from './icons.mjs';
 import { categories } from './data.mjs';
-import { arcadeSize } from './arcade.mjs';
 import { store, state, allPairs, session, otherModeToday, localPoints } from './state.mjs';
 import { dayAt, dayLabel, monthLabel, shiftMonth, deckFor, totalPoints, safeUrl } from './engine.mjs';
 
@@ -81,13 +80,6 @@ export function quests(task, answer) {
   }
   const deck=deckFor(day), blocked=otherModeToday();
   return back() + head('Практика / 05','Щоденна п’ятірка',`${dayLabel(day)} · нова серія опівночі за Києвом.`) + `<div class="split"><section class="panel"><div class="row between"><h2>${n===5?'П’ятірку завершено':'Маршрут на сьогодні'}</h2><span class="count-pill">${n} / 5</span></div>${bars(n)}<div class="steps">${deck.map((q,i)=>`<div class="step ${i===n?'next':''}"><span class="step-icon">${icon(done[i]?(done[i].correct?'check':'book'):kinds[q.kind][1],18)}</span><div><strong>${kinds[q.kind][0]}</strong><small>${done[i]?esc(done[i].expected):i===n?'Наступне завдання':'Далі в серії'}</small></div><span class="step-no">${done[i]?`+${done[i].points}`:`0${i+1}`}</span></div>`).join('')}</div>${blocked?`<p class="notice">Сьогоднішню серію розпочато в іншому профілі. Повернися до нього, щоб продовжити.</p>${link('profile','До профілю','btn ghost')}`:n===5?link('arcade','Зіграти в аркаду'):act('start',n?'Продовжити серію':'Почати п’ятірку')}</section><aside class="panel info-panel">${eyebrow('Як рахуються бали')}<h2>${n===5?`${totalPoints(done)} балів сьогодні`:'Одна відповідь — один шанс'}</h2><p>Правильна відповідь дає <b>20 балів</b>. За ребус — ще 5 балів до 8 секунд або 3 бали до 15 секунд.</p><p>Заверши всі п’ять, щоб продовжити серію. Бонус за день: 5 × довжина серії, до 35 балів.</p><div class="stat-line">${icon('flame',18)} Днів поспіль <b>${streak}</b></div><div class="stat-line">${icon('trophy',18)} Балів сьогодні <b>${totalPoints(done)}</b></div>${!session()?`<p class="notice">Граєш особисто. Для спільного рейтингу приєднайся до клубу перед першою відповіддю дня.</p>${link('profile','До профілю','text-link')}`:''}</aside></div>`;
-}
-
-export function arcadeView(g) {
-  const intro = back('arcade','До аркади')+head('Мінігра / 01','Свій / Чужий','Розрізняй українські й російські слова на швидкість.');
-  if(!g) return intro+`<div class="arcade-intro"><div class="game-art" aria-hidden="true"><span>RU</span><span>UA</span></div><div>${eyebrow('Словесний спринт')}<h2>Десять карток на раунд</h2><p>Українське слово змахуй вправо, російське — вліво. На ПК натискай стрілки або кнопки під карткою. У колоді ${arcadeSize} слів і висловів. Картка повториться, коли побачиш усю колоду.</p><div class="row game-meta"><span>${icon('heart',15)} 3 життя</span><span>${icon('clock',15)} Час скорочується</span></div>${act('game-start','Почати гру')}<small class="block-meta">Особистий рекорд: ${store.best}/10 · поза турніром</small></div></div>`;
-  if(g.over) return intro+`<section class="panel game-result">${eyebrow('Підсумок спринту')}<h2>${g.score}<small> / 10</small></h2><p>${esc(g.summary)} Рекорд: ${store.best}/10.</p><div class="result-choices">${g.history.map(h=>`<div><span class="${h.ok?'lime-text':''}">${icon(h.ok?'check':'close',15)}</span><b>${esc(h.word)}</b><span>${esc(h.hint)}</span></div>`).join('')}</div>${act('game-start','Зіграти знову')}</section>`;
-  return `<div class="narrow">${back('arcade','До аркади')}${act('game-exit','До правил','back','back')}<div class="quiz-header">${eyebrow('Словесний спринт')}<span class="meta">${g.index+1} / 10 &nbsp; · &nbsp; життя: ${g.lives}</span></div><div class="game-time"><i id="clock-bar"></i></div><div class="swipe-card" id="swipe-card"><span class="eyebrow">Впізнай мову</span><h1>${esc(g.deck[g.index][0])}</h1><p>← RU &nbsp; · &nbsp; UA →</p></div><div class="game-actions"><button class="btn ghost" data-act="game-ru">${icon('back',18)} Чуже · RU</button>${act('game-ua','Своє · UA')}</div><p class="meta game-hint" aria-live="polite">${esc(g.last || 'Свайп, стрілка на клавіатурі або кнопка.')}</p></div>`;
 }
 
 export function rankView(month, data, error) {

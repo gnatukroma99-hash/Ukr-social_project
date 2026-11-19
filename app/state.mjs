@@ -1,6 +1,7 @@
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { dayAt, shiftDay, deckFor, scoreAnswer, streakEnding, streakBonus, totalPoints, apiOrigin } from './engine.mjs';
 import { catalog } from './catalog.mjs';
+import { ARCADE_STORAGE_KEY, arcadeProgressFrom } from './arcade-progress.mjs';
 
 const key = 'svoie.v1';
 const initial = () => ({ name: 'Слухач', saved: [], days: {}, best: 0, arcadeRotation: null, miniRecords: { letters:0, frames:0, ladder:{}, puzzle:0 }, sessions: {}, active: '', played: {}, draft: null, vibe: 'all' });
@@ -10,6 +11,12 @@ function load() {
 }
 export const store = load();
 export const persist = () => localStorage.setItem(key, JSON.stringify(store));
+function loadArcade() {
+  try { return arcadeProgressFrom(JSON.parse(localStorage.getItem(ARCADE_STORAGE_KEY)),store); }
+  catch { return arcadeProgressFrom(null,store); }
+}
+export const arcadeProgress=loadArcade();
+export const persistArcade=()=>localStorage.setItem(ARCADE_STORAGE_KEY,JSON.stringify(arcadeProgress));
 export const session = () => store.active && store.sessions[store.active];
 const localDay = day => store.days[day] || { done: [], starts: {} };
 export const allPairs = () => [...catalog, ...(session()?.pairs || [])];
