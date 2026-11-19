@@ -23,8 +23,10 @@ const route = () => { const [page='home', value='']=(location.hash.slice(1)||'ho
 function notify(message) { clearTimeout(toastTimer);const inside=modal?.querySelector('[data-status]');if(inside){inside.hidden=false;inside.textContent=String(message);inside.scrollIntoView({block:'nearest'});return;}toast.textContent=String(message); toast.hidden=false; toastTimer=setTimeout(()=>{toast.hidden=true;},4400); }
 function draw(focus=false) {
   const {page,value}=route();
+  const openComparisons=new Set(focus?[]:Array.from(root.querySelectorAll('[data-pair-compare][open]'),d=>d.dataset.pairCompare));
   const content = page==='cat'?category(value):page==='saved'?savedView():page==='quests'?quests(task,answer):page==='arcade'?arcadeView(game):page==='rank'?rankView(month,scores,rankError):page==='profile'?profile(host,queue,reveal):page==='authors'?authors():home();
   root.innerHTML=shell(page,page==='rank'&&session()?.tournament?tournamentRank():content);
+  if(openComparisons.size)for(const d of root.querySelectorAll('[data-pair-compare]'))d.open=openComparisons.has(d.dataset.pairCompare);
   if(page==='profile'&&session()?.tournament){const panel=root.querySelector('.info-panel');panel.innerHTML=`${eyebrow('Шкільний турнір')}<h2>Учасник: ${esc(state().player.name)}</h2><p>На іншому пристрої увійди в той самий акаунт.</p><a class="btn primary" href="#rank">Відкрити рейтинг</a><button class="btn ghost" data-act="disconnect">Вийти з турніру</button>`;}
   if(page==='profile'){
     const base=session()?.tournament&&store.active.startsWith('https://')?store.active:'https://ukr-socialproject-production.up.railway.app';

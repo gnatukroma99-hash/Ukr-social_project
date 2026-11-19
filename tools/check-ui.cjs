@@ -24,14 +24,35 @@ app.whenReady().then(async()=>{
   const hasText=(sel,text)=>`document.querySelector(${JSON.stringify(sel)})?.textContent.includes(${JSON.stringify(text)})`;
   await wait('document.querySelectorAll(".category").length===6');
   const screen=process.env.SVOIE_SCREENSHOTS;
-  async function capture(name){if(!screen)return;mkdirSync(screen,{recursive:true});await js('document.fonts.ready.then(()=>true)');writeFileSync(path.join(screen,name+'.png'),(await web.capturePage(undefined,{stayHidden:true,stayAwake:true})).toPNG());console.log('Captured '+name);}
+  async function capture(name,selector){
+    if(!screen)return;
+    mkdirSync(screen,{recursive:true});await js('document.fonts.ready.then(()=>true)');
+    const rect=selector?await js(`(async()=>{
+      const el=document.querySelector(${JSON.stringify(selector)});
+      await Promise.all(Array.from(el.querySelectorAll('img'),img=>img.decode()));
+      el.scrollIntoView({block:'center',behavior:'instant'});
+      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+      const r=el.getBoundingClientRect();
+      return {x:Math.floor(r.left),y:Math.floor(r.top),width:Math.ceil(r.right)-Math.floor(r.left),height:Math.ceil(r.bottom)-Math.floor(r.top)};
+    })()`):undefined;
+    writeFileSync(path.join(screen,name+'.png'),(await web.capturePage(rect,{stayHidden:true,stayAwake:true})).toPNG());console.log('Captured '+name);
+  }
   await capture('desktop-home');
   await click('a[href="#cat/music"]');await wait(hasText('.pairs','SadSvit'));
-  await click('[data-act="save"]');await click('[data-value="world"]');await wait(hasText('.pairs','DakhaBrakha'));
+  const comparison='.pair-preview details';
+  await wait('document.querySelector(".pair-preview-cover")?.naturalWidth===960');
+  assert.equal(await js('document.querySelectorAll(".pair-preview").length'),1);
+  assert.equal(await js('document.querySelector(".pair-preview [data-external]").href'),'https://www.youtube.com/watch?v=EGLoIaHwKfE');
+  assert.equal(await js(`document.querySelector('${comparison}').open`),false);
+  await click(`${comparison} summary`);await wait(`document.querySelector('${comparison}').open`);
+  await capture('kaseta-desktop','.pair-preview');
+  await click('.pair-preview [data-act="save"]');
+  assert.ok(await js(`document.querySelector('${comparison}').open && document.querySelector('.pair-preview [aria-pressed="true"]')!==null`));
+  await click('[data-value="world"]');await wait(hasText('.pairs','DakhaBrakha'));
   const {catalog}=await import('../app/catalog.mjs');
   assert.equal(await js('document.querySelectorAll("article.pair").length'),catalog.filter(p=>p.category==='music'&&p.vibe==='world').length);
   assert.ok(!await js(hasText('.pairs','SadSvit')));
-  await click('[data-value="all"]');await capture('music');await go('saved');await wait(hasText('.pairs','SadSvit'));
+  await click('[data-value="all"]');await capture('music');await go('saved');await wait(hasText('.pair-preview','SadSvit'));
   await go('profile');await click('[data-act="host-start"]');await wait(hasText('.info-panel','Мій клуб'));
   await go('quests');await click('[data-act="start"]');await wait('document.querySelectorAll(".choice").length===4');await capture('quest');
   for(let i=0;i<5;i++){
@@ -48,7 +69,11 @@ app.whenReady().then(async()=>{
   await go('arcade');await click('[data-act="game-start"]');await wait('document.querySelector("#swipe-card")');
   await js(`document.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true}))`);await wait(hasText('.quiz-header','2 / 10'));
   await go('profile');await click('[data-act="host-stop"]');await wait(hasText('.info-panel','Приєднатися до клубу'));
-  window.setContentSize(390,844);await go('home');await capture('mobile-home');
+  window.setContentSize(390,844);await go('cat/music');await wait('document.querySelector(".pair-preview-cover")?.naturalWidth>0');
+  const phoneWidth=await js('innerWidth');assert.ok(phoneWidth>=360&&phoneWidth<=420,`Expected phone viewport, got ${phoneWidth}px`);
+  assert.ok(await js('document.documentElement.scrollWidth<=innerWidth && document.querySelector(".pair-preview-cover").getBoundingClientRect().bottom < document.querySelector(".pair-preview h3").getBoundingClientRect().top'));
+  await capture('kaseta-mobile','.pair-preview');
+  await go('home');await capture('mobile-home');
   assert.ok(await js('document.documentElement.scrollWidth<=innerWidth'));
   await click('.mobile-nav [data-act="menu"]');await wait('document.querySelector("dialog[open]")');await click('dialog a[href="#authors"]');await wait(hasText('.page-head','Автори'));
   await web.reload();await new Promise(resolve=>web.once('did-finish-load',resolve));await go('saved');await wait(hasText('.pairs','SadSvit'));

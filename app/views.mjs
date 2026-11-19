@@ -36,9 +36,26 @@ export function home() {
 }
 
 const sourceCopies = {'yt-1':'Іронічні кіноогляди','yt-2':'Популяризація науки','yt-3':'Документальні інтерв’ю','sh-1':'Короткі розважальні відео','sh-2':'Танцювальні відео','mu-1':'Мелодійний треп','mu-2':'Образний альтернативний реп','mu-3':'Експериментальна сцена','in-1':'Лайфстайл і відеоблог','in-2':'Міські фотоісторії','ar-1':'Просвітницьке медіа','ar-2':'Анімаційна студія','gm-1':'Ігрові трансляції','gm-2':'Фантастичний шутер'};
-function pairCard(p) {
+function pairBookmark(p) {
   const saved = store.saved.includes(p.id);
-  return `<article class="pair"><div class="pair-from"><span class="small-label">Звичне / RU</span><h3>${esc(p.from)}</h3><small>${esc(p.fromFormat || sourceCopies[p.id] || 'Точка порівняння')}</small></div><span class="pair-arrow">${icon('arrow',19)}</span><div class="pair-to"><div class="row between"><span class="small-label lime-text">Альтернатива / ${p.vibe==='ua'?'UA':'Світ'}</span><button class="icon-btn ${saved?'is-saved':''}" data-act="save" data-id="${esc(p.id)}" aria-pressed="${saved}" aria-label="${saved?'Вилучити зі збереженого':'Зберегти пару'}">${icon('save',18)}</button></div><h3>${esc(p.to)}</h3><span class="format">${esc(p.format)}</span><p>${esc(p.description)}</p>${external(p.url,p.action,'text-link')}</div></article>`;
+  return `<button type="button" class="icon-btn ${saved?'is-saved':''}" data-act="save" data-id="${esc(p.id)}" aria-pressed="${saved}" aria-label="${saved?'Вилучити зі збереженого':'Зберегти пару'}">${icon('save',18)}</button>`;
+}
+function previewCard(p) {
+  const { cover, title, meta, cue } = p.preview;
+  return `<article class="pair pair-preview">
+    <img class="pair-preview-cover" src="./assets/covers/${encodeURIComponent(cover)}" width="960" height="640" alt="" decoding="async">
+    <div class="pair-preview-body">
+      <div class="pair-preview-head"><div><span class="small-label lime-text">${p.vibe==='ua'?'Український автор':'Наші у світі'}</span><h3>${esc(p.to)}</h3></div>${pairBookmark(p)}</div>
+      <div class="pair-preview-context"><span class="pair-preview-source">Звичне: <b>${esc(p.from)}</b></span><span class="format">${esc(p.format)}</span></div>
+      <div class="pair-preview-track"><span class="pair-preview-note">${icon('music',20)}</span><div><span class="small-label">З чого почати</span><div class="pair-preview-trackline"><strong>${esc(title)}</strong><span>${esc(meta)}</span></div><p>${esc(cue)}</p></div></div>
+      ${external(p.url,p.action,'btn primary pair-preview-listen')}
+      <details class="pair-preview-compare" data-pair-compare="${esc(p.id)}"><summary>Чим схожі? ${icon('arrow',15)}</summary><p>${esc(p.description)}</p></details>
+    </div>
+  </article>`;
+}
+function pairCard(p) {
+  if (p.preview) return previewCard(p);
+  return `<article class="pair"><div class="pair-from"><span class="small-label">Звичне / RU</span><h3>${esc(p.from)}</h3><small>${esc(p.fromFormat || sourceCopies[p.id] || 'Точка порівняння')}</small></div><span class="pair-arrow">${icon('arrow',19)}</span><div class="pair-to"><div class="row between"><span class="small-label lime-text">Альтернатива / ${p.vibe==='ua'?'UA':'Світ'}</span>${pairBookmark(p)}</div><h3>${esc(p.to)}</h3><span class="format">${esc(p.format)}</span><p>${esc(p.description)}</p>${external(p.url,p.action,'text-link')}</div></article>`;
 }
 export function category(id) {
   const c = categories.find(a=>a.id===id); if(!c) return empty('layers','Такого напряму немає','Повернися до каталогу.',link('home','До каталогу'));
