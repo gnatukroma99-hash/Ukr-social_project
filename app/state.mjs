@@ -1,6 +1,6 @@
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { dayAt, shiftDay, deckFor, scoreAnswer, streakEnding, streakBonus, totalPoints, apiOrigin } from './engine.mjs';
-import { catalog } from './data.mjs';
+import { catalog } from './catalog.mjs';
 
 const key = 'svoie.v1';
 const initial = () => ({ name: 'Слухач', saved: [], days: {}, best: 0, sessions: {}, active: '', played: {}, draft: null, vibe: 'all' });

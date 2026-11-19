@@ -28,7 +28,9 @@ app.whenReady().then(async()=>{
   await capture('desktop-home');
   await click('a[href="#cat/music"]');await wait(hasText('.pairs','SadSvit'));
   await click('[data-act="save"]');await click('[data-value="world"]');await wait(hasText('.pairs','DakhaBrakha'));
-  assert.equal(await js('document.querySelectorAll("article.pair").length'),1);
+  const {catalog}=await import('../app/catalog.mjs');
+  assert.equal(await js('document.querySelectorAll("article.pair").length'),catalog.filter(p=>p.category==='music'&&p.vibe==='world').length);
+  assert.ok(!await js(hasText('.pairs','SadSvit')));
   await click('[data-value="all"]');await capture('music');await go('saved');await wait(hasText('.pairs','SadSvit'));
   await go('profile');await click('[data-act="host-start"]');await wait(hasText('.info-panel','Мій клуб'));
   await go('quests');await click('[data-act="start"]');await wait('document.querySelectorAll(".choice").length===4');await capture('quest');

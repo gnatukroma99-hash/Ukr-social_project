@@ -10,7 +10,7 @@ export const categories = [
 const pair = (id, category, from, to, vibe, format, description, url, action = 'Відкрити') =>
   ({ id, category, from, to, vibe, format, description, url, action });
 
-export const catalog = [
+export const starterPairs = [
   pair('yt-1', 'youtube', 'BadComedian', 'Geek Journal', 'ua', 'Кіно · відеоесе', 'Тайлер Андерсон зупиняє фільм на дивній сцені й розбирає, чому вона не працює. На каналі є й огляди українського кіно.', 'https://www.youtube.com/@GeekJournal?sub_confirmation=1', 'Підписатися'),
   pair('yt-2', 'youtube', 'Антропогенез.ру', 'Куншт', 'ua', 'Наука · подкасти', 'У «Куншті» науковці пояснюють свої дослідження українською. Для прогулянки вибери подкаст, для читання в дорозі збережи статтю.', 'https://kunsht.com.ua/', 'До «Куншту»'),
   pair('yt-3', 'youtube', 'вДудь', 'Ukraїner International', 'world', 'Документалістика · англійською', 'Команда Ukraїner їздить в експедиції Україною й записує мешканців міст і сіл. Англомовну історію можна скинути другові, який не розуміє української.', 'https://www.ukrainer.net/en/', 'Дивитися Ukraїner'),
