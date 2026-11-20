@@ -8,6 +8,8 @@ on:
       - 'crates/**'
       - 'app/**'
       - 'tools/check-rust-core.mjs'
+      - 'tools/export-rust-content.mjs'
+      - 'tools/rust-arcade-parity.mjs'
       - '.github/workflows/rust.yml'
 
 permissions:
@@ -24,6 +26,8 @@ jobs:
           node-version: '24'
       - run: rustup toolchain install 1.91.1 --profile minimal --component rustfmt --component clippy --target wasm32-unknown-unknown
       - run: rustup override set 1.91.1
+      - run: cargo fetch --locked
+      - run: node tools/export-rust-content.mjs --check
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --locked --offline -- -D warnings
       - run: cargo test --workspace --locked --offline

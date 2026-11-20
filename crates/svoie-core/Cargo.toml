@@ -5,3 +5,6 @@ description = "Platform-independent rules and Ukrainian word data for Поваж
 edition.workspace = true
 rust-version.workspace = true
 publish = false
+
+[dependencies]
+jiff = { version = "0.2.46", default-features = false, features = ["std", "tzdb-bundle-always"] }
