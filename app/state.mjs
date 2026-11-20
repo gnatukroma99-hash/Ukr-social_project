@@ -1,6 +1,7 @@
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { dayAt, shiftDay, deckFor, scoreAnswer, streakEnding, streakBonus, totalPoints, apiOrigin } from './engine.mjs';
 import { catalog } from './catalog.mjs';
+import { podcasts } from './podcasts.mjs';
 import { ARCADE_STORAGE_KEY, arcadeProgressFrom } from './arcade-progress.mjs';
 
 const key = 'svoie.v1';
@@ -20,6 +21,8 @@ export const persistArcade=()=>localStorage.setItem(ARCADE_STORAGE_KEY,JSON.stri
 export const session = () => store.active && store.sessions[store.active];
 const localDay = day => store.days[day] || { done: [], starts: {} };
 export const allPairs = () => [...catalog, ...(session()?.pairs || [])];
+export const savedPairs = () => allPairs().filter(p=>store.saved.includes(p.id));
+export const savedPodcasts = () => podcasts.filter(p=>store.saved.includes(p.id));
 export const localPoints = month => Object.entries(store.days).filter(([d]) => d.startsWith(month)).reduce((a,[,v]) => a + totalPoints(v.done), 0);
 function localCompleted() { return new Set(Object.keys(store.days).filter(day => localDay(day).done.length === 5)); }
 

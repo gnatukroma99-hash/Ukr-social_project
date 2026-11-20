@@ -1,6 +1,7 @@
 import { icon, clueMarkup } from './icons.mjs';
 import { categories } from './data.mjs';
-import { store, state, allPairs, session, otherModeToday, localPoints } from './state.mjs';
+import { store, state, allPairs, savedPairs, savedPodcasts, session, otherModeToday, localPoints } from './state.mjs';
+import { podcasts, podcastDirection, podcastTopics, filterPodcasts } from './podcasts.mjs';
 import { dayAt, dayLabel, monthLabel, shiftMonth, deckFor, totalPoints, safeUrl } from './engine.mjs';
 
 export const esc = v => String(v ?? '').replace(/[&<>"']/g, x => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[x]));
@@ -30,19 +31,20 @@ function directionCard(c) {
     <div class="direction-details"><div class="direction-title"><h3>${esc(c.name)}</h3>${icon('upRight',16)}</div><p>${esc(c.copy)}</p></div>
   </a>`;
 }
+const directions=[...categories,podcastDirection];
 
 export function home() {
   const { day, done } = state(), n = done.length;
   return `<div class="home-hero"><section class="hero"><div class="hero-art" aria-hidden="true"></div><div class="hero-body">${eyebrow('У навушниках')}<h1>Поважайте<br><em>своє<span>.</span></em></h1><p>Сьогодні слухаємо «Касету» SadSvit.<br>Почни з басу у вступі.</p>${link('cat/music','Платина → SadSvit','btn primary','upRight')}</div><span class="hero-imprint">SadSvit &nbsp;/&nbsp; Касета</span></section>
     <section class="daily-tile"><div class="row between"><span class="eyebrow violet-text"><i></i> Квест дня</span><span class="flag-tag">${icon('flag',19)}</span></div><div><p class="daily-date">${esc(dayLabel(day))} · за Києвом</p><h2>Щоденна п’ятірка</h2><p class="muted daily-copy">Обери переклад, виправ фразу й розгадай ребуси.</p></div><div class="daily-progress"><div class="row between"><strong>${n} <small>/ 5</small></strong><span class="meta">виконано</span></div>${bars(n)}</div>${link('quests', n===5?'Мій результат':n?'Продовжити':'До квестів', 'btn quest-btn')}</section></div>
-    <section id="branches" tabindex="-1" class="branches"><div class="section-top"><div>${eyebrow('Каталог / 01',false)}<h2>Обери свій напрям</h2></div><span class="count-pill">${icon('layers',14)} 06 напрямів</span></div><div class="category-grid">${categories.map(directionCard).join('')}</div></section>
+    <section id="branches" tabindex="-1" class="branches"><div class="section-top"><div>${eyebrow('Каталог / 01',false)}<h2>Обери свій напрям</h2></div><span class="count-pill">${icon('layers',14)} ${directions.length} напрямів</span></div><div class="category-grid">${directions.map(directionCard).join('')}</div></section>
     <div class="home-strip"><div class="row"><span class="strip-icon">${icon('game',25)}</span><div><span class="eyebrow">Аркада / 02</span><h3>П’ять мініігор</h3><p>Відгадай слово за літерами або побудуй ланцюжок між двома словами.</p></div></div>${link('arcade','До аркади','btn ghost')}</div>`;
 }
 
 const communityCovers = {youtube:'yt-1.webp',shorts:'sh-2.webp',music:'mu-2.webp',instagram:'in-2.webp',art:'ar-4.webp',games:'gm-1.webp'};
-function pairBookmark(p) {
+function bookmark(p,noun='пару') {
   const saved = store.saved.includes(p.id);
-  return `<button type="button" class="icon-btn ${saved?'is-saved':''}" data-act="save" data-id="${esc(p.id)}" aria-pressed="${saved}" aria-label="${saved?'Вилучити зі збереженого':'Зберегти пару'}">${icon('save',18)}</button>`;
+  return `<button type="button" class="icon-btn ${saved?'is-saved':''}" data-act="save" data-id="${esc(p.id)}" aria-pressed="${saved}" aria-label="${saved?'Вилучити зі збереженого':`Зберегти ${noun}`}">${icon('save',18)}</button>`;
 }
 function pairCard(p) {
   const { cover = communityCovers[p.category] || 'ar-4.webp', title, meta, cue, artwork, url = p.url, action = p.action } = p.preview || {};
@@ -57,7 +59,7 @@ function pairCard(p) {
       ${releaseImage ? `<figcaption class="pair-preview-credit">${external(artwork.source,artwork.label,'text-link')}</figcaption>` : ''}
     </figure>
     <div class="pair-preview-body">
-      <div class="pair-preview-head"><div><span class="small-label lime-text">${p.vibe==='ua'?'Український автор':'Наші у світі'}</span><h3>${esc(p.to)}</h3></div>${pairBookmark(p)}</div>
+      <div class="pair-preview-head"><div><span class="small-label lime-text">${p.vibe==='ua'?'Український автор':'Наші у світі'}</span><h3>${esc(p.to)}</h3></div>${bookmark(p)}</div>
       <div class="pair-preview-context"><span class="pair-preview-source">Звичне: <b>${esc(p.from)}</b></span><span class="format">${esc(p.format)}</span></div>
       ${title ? `<div class="pair-preview-track"><span class="pair-preview-note">${icon(glyph,20)}</span><div><span class="small-label">З чого почати</span><div class="pair-preview-trackline"><strong>${esc(title)}</strong><span>${esc(meta)}</span></div><p>${esc(cue)}</p></div></div>` : ''}
       ${external(url,action,'btn primary pair-preview-listen')}
@@ -65,14 +67,44 @@ function pairCard(p) {
     </div>
   </article>`;
 }
-export function category(id) {
+function podcastCard(p) {
+  return `<article class="podcast-card${p.guest?' podcast-guest-card':''}" data-podcast="${esc(p.id)}">
+    <div class="podcast-card-top">
+      <figure class="pair-preview-visual"><div class="pair-preview-media">
+        <img class="pair-preview-cover" src="${esc(p.cover)}" width="480" height="480" alt="" loading="lazy" decoding="async">
+        <img class="pair-preview-release" src="${esc(p.image)}" width="600" height="600" alt="Обкладинка подкасту «${esc(p.title)}»" aria-hidden="true" referrerpolicy="no-referrer" loading="lazy" decoding="async">
+      </div><figcaption class="pair-preview-credit">${external(p.showUrl,'Apple Podcasts','text-link')}</figcaption></figure>
+      <div class="podcast-heading"><span class="podcast-topic">${esc(podcastTopics[p.topic])}</span><h3>${esc(p.title)}</h3><p class="meta">${esc(p.author)}</p></div>
+      ${bookmark(p,'подкаст')}
+    </div>
+    <p class="podcast-summary">${esc(p.description)}</p>
+    <div class="podcast-episode"><span class="small-label">З чого почати</span><strong>${esc(p.episode)}</strong><p>${esc(p.cue)}</p><span class="meta">${p.minutes} хв · Apple Podcasts</span></div>
+    <div class="podcast-actions">${external(p.episodeUrl,'Слухати випуск','btn primary podcast-listen')}${external(p.authorUrl,'До автора','btn ghost podcast-author-link')}</div>
+    ${p.guest?external(p.guest.url,`YouTube · ${p.guest.name}`,'text-link podcast-guest-link'):''}
+  </article>`;
+}
+export const podcastCount=n=>`Показано: ${n} із ${podcasts.length}`;
+export const podcastResults=items=>items.length?items.map(podcastCard).join(''):empty('music','Не знайшли подкастів','Спробуй інше слово або вибери всі теми.');
+function podcastView(filter={query:'',topic:'all'}) {
+  const items=filterPodcasts(filter);
+  const topics=[['all','Усі теми'],...Object.entries(podcastTopics)];
+  return `${back()}<header class="page-head cat-head podcast-tone"><div>${eyebrow('Каталог · Українською')}<h1>Подкасти</h1><p>Обери тему, увімкни випуск або збережи подкаст на потім.</p></div><img class="podcast-head-art" src="./assets/directions/podcasts.webp" width="480" height="480" alt=""></header>
+    <div class="podcast-filters"><label for="podcast-query">Пошук подкастів<input type="search" id="podcast-query" value="${esc(filter.query)}" placeholder="Назва, автор або випуск" maxlength="100" autocomplete="off"></label>
+      <div class="tabs podcast-tabs" role="group" aria-label="Теми подкастів">${topics.map(([id,name])=>`<button type="button" data-act="podcast-topic" data-value="${id}" aria-pressed="${filter.topic===id}" class="${filter.topic===id?'selected':''}">${esc(name)}</button>`).join('')}</div>
+    </div><p id="podcast-count" class="meta" role="status">${podcastCount(items.length)}</p><div class="podcast-grid" id="podcast-results">${podcastResults(items)}</div>`;
+}
+export function category(id,podcastFilter) {
+  if(id===podcastDirection.id)return podcastView(podcastFilter);
   const c = categories.find(a=>a.id===id); if(!c) return empty('layers','Такого напряму немає','Повернися до каталогу.',link('home','До каталогу'));
   const pairs = allPairs().filter(p=>p.category===id && (store.vibe==='all'|| p.vibe===store.vibe)), i = categories.indexOf(c);
   return `${back()}<div class="page-head cat-head ${c.color}"><div>${eyebrow(`Каталог / 0${i+1}`)}<h1>${esc(c.name)}</h1><p>${esc(c.copy)}. Від звичного — до свого.</p></div><span class="big-tile">${icon(c.icon,39)}</span></div><div class="filter-row"><span class="filter-label">${icon('tune',16)} Свій вайб</span><div class="tabs" aria-label="Фільтр авторів">${[['all','Усі'],['ua','Тільки українською'],['world','Наші у світі · ENG/UA']].map(([v,n])=>`<button data-act="vibe" data-value="${v}" aria-pressed="${store.vibe===v}" class="${store.vibe===v?'selected':''}">${n}</button>`).join('')}</div></div><div class="pairs">${pairs.length ? pairs.map(pairCard).join('') : empty('layers','Поки немає пар','Спробуй інший вайб або запропонуй свого автора.')}</div><div class="end-cta"><span>Знаєш ще одну влучну пару?</span>${act('suggest','Запропонувати аналог','btn ghost','chat')}</div>`;
 }
 export function savedView() {
-  const pairs = allPairs().filter(p=>store.saved.includes(p.id));
-  return back('profile','До профілю') + head('Моя колекція','Збережені пари','Автори, до яких хочеться повернутися.') + (pairs.length ? `<div class="pairs">${pairs.map(pairCard).join('')}</div>` : empty('save','Колекція ще порожня','Натисни закладку біля імені автора у будь-якій парі.',link('home','До каталогу')));
+  const pairs=savedPairs(), shows=savedPodcasts();
+  return back('profile','До профілю')+head('Моя колекція','Збережене','Пари авторів і подкасти, які ти додав до закладок.')+
+    (shows.length?`<section class="saved-shows"><h2>Подкасти</h2><div class="podcast-grid">${podcastResults(shows)}</div></section>`:'')+
+    (pairs.length?`<div class="pairs">${pairs.map(pairCard).join('')}</div>`:'')+
+    (!pairs.length&&!shows.length?empty('save','Колекція ще порожня','Натисни закладку на картці в каталозі.',link('home','До каталогу')):'');
 }
 
 const kinds = { translate:['Переклад','book'], riddle:['Мальований ребус','puzzle'], context:['Контекст-батл','chat'] };

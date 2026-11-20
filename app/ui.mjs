@@ -4,7 +4,8 @@ import { nextArcadeCard, ROUND_SIZE } from './arcade.mjs';
 import { GAMES, LEVELS, isAlbum, isLevel, sideDuration } from './arcade-levels.mjs';
 import { dayAt, validMonth, safeUrl } from './engine.mjs';
 import { store, persist, state, session, connect, authAction, disconnect, clubApi, refresh, refreshCatalog, rename, startQuestion, submitAnswer, toggleSaved, arcadeProgress, persistArcade } from './state.mjs';
-import { shell, home, category, savedView, quests, rankView, esc, eyebrow, external } from './views.mjs';
+import { shell, home, category, savedView, quests, rankView, esc, eyebrow, external, podcastCount, podcastResults } from './views.mjs';
+import { podcastDirection, podcastTopics, filterPodcasts } from './podcasts.mjs';
 import { arcadeLobby, miniPage } from './arcade-views.mjs';
 import { makeMiniArcade } from './arcade-controller.mjs';
 import { profile, authors, menuBody, supportBody, publicIssue } from './community.mjs';
@@ -26,12 +27,20 @@ let month=dayAt().slice(0,7), scores=null, rankError='', rankSerial=0, modal=nul
 const route = () => { const [page='home', value='']=(location.hash.slice(1)||'home').split('/'); return {page, value}; };
 const arcadeKind=()=>{const {page,value}=route();return page==='arcade'?value:'';};
 const mini=makeMiniArcade(arcadeKind);
+const podcastFilter={topic:'all',query:''};
+function redrawPodcasts(){
+  const grid=document.querySelector('#podcast-results');if(!grid)return;
+  const items=filterPodcasts(podcastFilter);
+  grid.innerHTML=podcastResults(items);
+  const count=document.querySelector('#podcast-count'),text=podcastCount(items.length);
+  if(count.textContent!==text)count.textContent=text;
+}
 function notify(message) { clearTimeout(toastTimer);const inside=modal?.querySelector('[data-status]');if(inside){inside.hidden=false;inside.textContent=String(message);inside.scrollIntoView({block:'nearest'});return;}toast.textContent=String(message); toast.hidden=false; toastTimer=setTimeout(()=>{toast.hidden=true;},4400); }
 function draw(focus=false) {
   const {page,value}=route();
   const openComparisons=new Set(focus?[]:Array.from(root.querySelectorAll('[data-pair-compare][open]'),d=>d.dataset.pairCompare));
   const arcade=()=>GAMES.includes(value)?miniPage(value,value==='side'?game:mini.game):arcadeLobby();
-  const content = page==='cat'?category(value):page==='saved'?savedView():page==='quests'?quests(task,answer):page==='arcade'?arcade():page==='rank'?rankView(month,scores,rankError):page==='profile'?profile(host,queue,reveal):page==='authors'?authors():home();
+  const content = page==='cat'?category(value,podcastFilter):page==='saved'?savedView():page==='quests'?quests(task,answer):page==='arcade'?arcade():page==='rank'?rankView(month,scores,rankError):page==='profile'?profile(host,queue,reveal):page==='authors'?authors():home();
   root.innerHTML=shell(page,page==='rank'&&session()?.tournament?tournamentRank():content);
   if(openComparisons.size)for(const d of root.querySelectorAll('[data-pair-compare]'))d.open=openComparisons.has(d.dataset.pairCompare);
   if(page==='profile'&&session()?.tournament){const panel=root.querySelector('.info-panel');panel.innerHTML=`${eyebrow('Шкільний турнір')}<h2>Учасник: ${esc(state().player.name)}</h2><p>На іншому пристрої увійди в той самий акаунт.</p><a class="btn primary" href="#rank">Відкрити рейтинг</a><button class="btn ghost" data-act="disconnect">Вийти з турніру</button>`;}
@@ -51,7 +60,7 @@ async function loadRank() {
 }
 function stopClock(){ clearInterval(ticker); ticker=0; }
 function routeChanged() {
-  closeModal(); toast.hidden=true; gameTouch=null; ++rankSerial; const {page}=route();
+  closeModal(); toast.hidden=true; gameTouch=null; ++rankSerial; const {page,value}=route();
   if(page!=='quests'){task=null;answer=null;}
   if(arcadeKind()!=='side'){stopClock();game=null;}
   mini.leave();
@@ -59,7 +68,7 @@ function routeChanged() {
   draw(true);
   if(page==='rank') void loadRank();
   if(page==='profile' && window.svoieClub) window.svoieClub.status().then(s=>{host=s;if(route().page==='profile')draw();}).catch(()=>{});
-  if(page==='cat' && session()) refreshCatalog().then(()=>{if(route().page==='cat')draw();}).catch(()=>{});
+  if(page==='cat' && value!==podcastDirection.id && session()) refreshCatalog().then(()=>{const next=route();if(next.page==='cat'&&next.value===value)draw();}).catch(()=>{});
 }
 window.addEventListener('hashchange',routeChanged);
 document.addEventListener('load',e=>{
@@ -126,7 +135,14 @@ document.addEventListener('click',async e=>{
   if(act==='support'||act==='suggest'||act==='support-tab'){support(act==='suggest'?'pair':el.dataset.value||'feedback');return;}
   if(act==='browse'){const b=document.querySelector('#branches');b?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});b?.focus({preventScroll:true});return;}
   if(act==='vibe'){store.vibe=el.dataset.value;persist();draw();document.querySelector(`[data-act="vibe"][data-value="${store.vibe}"]`)?.focus({preventScroll:true});return;}
-  if(act==='save'){const id=el.dataset.id,added=toggleSaved(id);draw();document.querySelector(`[data-act="save"][data-id="${CSS.escape(id)}"]`)?.focus({preventScroll:true});notify(added?'Пару збережено у профілі.':'Пару вилучено з колекції.');return;}
+  if(act==='podcast-topic'){
+    const topic=el.dataset.value;
+    if(topic!=='all'&&!Object.prototype.hasOwnProperty.call(podcastTopics,topic))return;
+    podcastFilter.topic=topic;
+    el.closest('.podcast-tabs').querySelectorAll('button').forEach(b=>{const chosen=b===el;b.classList.toggle('selected',chosen);b.setAttribute('aria-pressed',String(chosen));});
+    redrawPodcasts();return;
+  }
+  if(act==='save'){const id=el.dataset.id,isPodcast=!!el.closest('[data-podcast]'),added=toggleSaved(id);draw();document.querySelector(`[data-act="save"][data-id="${CSS.escape(id)}"]`)?.focus({preventScroll:true});notify(isPodcast?(added?'Подкаст збережено.':'Подкаст вилучено із закладок.'):(added?'Пару збережено у профілі.':'Пару вилучено з колекції.'));return;}
   if(act==='leave-quest'){task=null;answer=null;draw(true);return;}
   if(act==='game-start'&&arcadeKind()==='side'){startGame();return;}
   if(act==='arcade-settings'&&GAMES.includes(arcadeKind())){stopClock();game=null;mini.leave();draw(true);root.querySelector('[data-act="arcade-level"][aria-pressed="true"]')?.focus();return;}
@@ -169,6 +185,7 @@ document.addEventListener('submit',e=>{
   });
 });
 document.addEventListener('change',e=>{if(e.target.id==='rank-month'&&validMonth(e.target.value)){month=e.target.value;void loadRank();}});
+document.addEventListener('input',e=>{if(e.target.id==='podcast-query'){podcastFilter.query=e.target.value;redrawPodcasts();}});
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&modal){e.preventDefault();closeModal();return;}
   if(modal||['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)||e.repeat||e.altKey||e.ctrlKey||e.metaKey)return;

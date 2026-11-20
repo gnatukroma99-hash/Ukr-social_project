@@ -1,4 +1,4 @@
-"""Six square catalog prints. Each named shape is editable in PhotoCraft."""
+"""Square catalog prints. Each named shape is editable in PhotoCraft."""
 from concurrent.futures import ThreadPoolExecutor
 import subprocess
 import sys
@@ -122,10 +122,30 @@ def games():
         ('Speaker slots',ink('m76.8 48.6 2.6-.5m-2.2 2.8 2.7-.5',DARK,1.05)),
     ]
 
+def podcasts():
+    return [
+        ('Outer signal',ink('M64 18q17 5 21 21m-19-14q11 3 13 12','#a4e2d5',1.4)),
+        ('Cable',ink('M55 78q10 13 24 3 5-4 15-3','#d3a4a3',2.2)),
+        ('Base shadow',oval(13,73,62,13,SHADOW)), ('Stand foot',oval(16,69,57,12,'#567c85')),
+        ('Stand face',oval(16,67,57,10,'#9bc8c4')), ('Post',rect(43,52,7,21,'#8c5d69',2)),
+        ('Yoke',ink('M24 37 20 49q-3 13 10 17t21-8l4-10',SHADOW,6)),
+        ('Yoke rim',ink('M24 35 20 47q-4 13 10 17t21-8l4-10','#f2aa8c',3.8)),
+        ('Mic depth',path('M29 24q5-12 18-9t12 18l-7 21q-4 13-17 10T23 46Z',DARK)),
+        ('Enamel capsule',path('M28 21q4-12 18-8t11 17l-7 22q-4 13-17 9T21 43Z','#d98b7b')),
+        ('Grille',path('M28 21q4-12 18-8t11 17l-5 15-28-9Z','#fae0c4')),
+        ('Grille grooves',ink('m31 22 19 6m-21-1 19 6m-21-1 19 6','#745467',1.65)),
+        ('Indicator',dot(36,48,3.1,DARK)), ('Indicator glass',dot(36,47.5,1.5,'#a4e2d5')),
+        ('Signal strip',path('M57 52 83 45q3-1 4 2l4 14q1 3-2 4l-26 7q-3 1-4-2l-4-14q-1-3 2-4Z','#305061')),
+        ('Signal trim',ink('m59 54 24-6m-21 21 25-7','#7ca9a9',.85)),
+        ('Waveform',ink('m61 62 5-1 1-4 4 6 1-9 4 4 7-2','#c4e3c9',1.3)),
+        ('Spark',ink('m13 26 8-3m-5-3 2 9','#ffcf9f',1.4)),
+    ]
+
 series={
     'youtube':(youtube,'#864958','#412b43','#ffb288'), 'shorts':(shorts,'#356d6c','#203d4b','#a3e4ca'),
     'music':(music,'#65527f','#342b53','#e3b0d7'), 'instagram':(instagram,'#88526e','#45304b','#ffbac5'),
     'art':(art_media,'#8a634c','#483947','#ffd59c'), 'games':(games,'#455e86','#2c3455','#adcfef'),
+    'podcasts':(podcasts,'#427077','#324057','#c0e7d8'),
 }
 
 def render(category):

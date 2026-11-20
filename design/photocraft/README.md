@@ -30,8 +30,15 @@ python design/photocraft/build_arcade.py "/path/to/photocraft-cli"
 python design/photocraft/build_arcade.py "/path/to/photocraft-cli" hedgehog --editable
 ```
 
-Для шести карток «Обери свій напрям» відкрий `editable/direction-*.pcraft`. Наприклад, у `direction-music.pcraft` можна пересунути тонарм або змінити колір платівки. Щоб відтворити ці проєкти й експортувати квадратні WebP у `app/assets/directions/`:
+Для карток «Обери свій напрям» відкрий `editable/direction-*.pcraft`. Наприклад, у `direction-music.pcraft` можна пересунути тонарм або змінити колір платівки. Щоб відтворити ці проєкти й експортувати квадратні WebP у `app/assets/directions/`:
 
 ```sh
 python design/photocraft/build_directions.py "/path/to/photocraft-cli"
+```
+
+Без інтернету картки подкастів показують малюнки з `app/assets/podcasts/`. Для повторного експорту всіх малюнків або редагування обкладинки «Вродило»:
+
+```sh
+python design/photocraft/build_podcasts.py "/path/to/photocraft-cli"
+python design/photocraft/build_podcasts.py "/path/to/photocraft-cli" vrodylo --editable
 ```

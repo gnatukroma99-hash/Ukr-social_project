@@ -12,10 +12,12 @@ app.whenReady().then(async()=>{
   registerClub();const window=createWindow();window.setContentSize(1280,920);
   const web=window.webContents,errors=[];web.setBackgroundThrottling(false);
   const {catalog}=await import('../app/catalog.mjs');
+  const {podcasts,filterPodcasts}=await import('../app/podcasts.mjs');
+  const {categories}=await import('../app/data.mjs');
   const {dropWords}=await import('../app/minigame-data.mjs');
   const {arcadeDecks}=await import('../app/arcade.mjs');
   const {frameDecks,ladderDecks}=await import('../app/minigames.mjs');
-  const artworkUrls=new Set(catalog.flatMap(p=>p.preview.artwork?[p.preview.artwork.image]:[]));
+  const artworkUrls=new Set([...catalog.flatMap(p=>p.preview.artwork?[p.preview.artwork.image]:[]),...podcasts.map(p=>p.image)]);
   const liveArtwork=process.env.SVOIE_LIVE_ARTWORK==='1';
   if(!liveArtwork)web.session.webRequest.onBeforeRequest({urls:['https://*/*']},(details,reply)=>reply({cancel:artworkUrls.has(details.url)}));
   web.on('console-message',(e)=>{
@@ -32,18 +34,21 @@ app.whenReady().then(async()=>{
   const go=async page=>{await js(`location.hash=${JSON.stringify(page)}`);await js('new Promise(r=>setTimeout(r,80))');};
   const hasText=(sel,text)=>`document.querySelector(${JSON.stringify(sel)})?.textContent.includes(${JSON.stringify(text)})`;
   const checkCover=async online=>{
-    await wait('document.querySelector(".pair-preview-cover") && document.querySelector(".pair-preview-release")');
+    await wait('document.querySelector(".pair-preview .pair-preview-cover") && document.querySelector(".pair-preview .pair-preview-release")');
     await js('document.querySelectorAll(".pair-preview img").forEach(img=>img.loading="eager")');
-    await wait('document.querySelector(".pair-preview-cover")?.naturalWidth===960');
-    await wait('document.querySelector(".pair-preview-release")?.complete');
+    await wait('document.querySelector(".pair-preview .pair-preview-cover")?.naturalWidth===960');
+    await wait('document.querySelector(".pair-preview .pair-preview-release")?.complete');
     if(online){
-      await wait('document.querySelector(".pair-preview-visual.has-release .pair-preview-release")?.naturalWidth===700');
-      assert.equal(await js('document.querySelector(".pair-preview-credit a").href'),'https://sadsvit.bandcamp.com/track/--2');
+      await wait('document.querySelector(".pair-preview .has-release .pair-preview-release")?.naturalWidth===700');
+      assert.equal(await js('document.querySelector(".pair-preview .pair-preview-credit a").href'),'https://sadsvit.bandcamp.com/track/--2');
     }else{
-      assert.ok(await js('document.querySelector(".pair-preview-release").naturalWidth===0 && !document.querySelector(".pair-preview-visual.has-release") && getComputedStyle(document.querySelector(".pair-preview-cover")).visibility==="visible" && getComputedStyle(document.querySelector(".pair-preview-credit")).display==="none"'));
+      assert.ok(await js(`(()=>{
+        const card=document.querySelector('.pair-preview');
+        return card.querySelector('.pair-preview-release').naturalWidth===0 && !card.querySelector('.has-release') && getComputedStyle(card.querySelector('.pair-preview-cover')).visibility==='visible' && getComputedStyle(card.querySelector('.pair-preview-credit')).display==='none';
+      })()`));
     }
     const media=await js(`(()=>{
-      const frame=document.querySelector('.pair-preview-media');
+      const frame=document.querySelector('.pair-preview .pair-preview-media');
       const image=frame.querySelector('.pair-preview-${online?'release':'cover'}');
       const a=frame.getBoundingClientRect(),b=image.getBoundingClientRect();
       return {width:a.width,height:a.height,flush:['x','y','width','height'].every(key=>a[key]===b[key]),
@@ -53,11 +58,11 @@ app.whenReady().then(async()=>{
     assert.ok(Math.abs(media.width-media.height)<1 && media.flush && media.radius>0 && media.clip==='hidden' && media.padding==='0px' && media.fit==='cover',JSON.stringify(media));
   };
   async function checkDirections(){
-    await wait(`document.querySelectorAll('#branches .category img').length===6 && [...document.querySelectorAll('#branches .category img')].every(i=>i.complete && i.naturalWidth>0)`);
+    await wait(`document.querySelectorAll('#branches .category img').length===${categories.length+1} && [...document.querySelectorAll('#branches .category img')].every(i=>i.complete && i.naturalWidth>0)`);
     const photos=await js(`[...document.querySelectorAll('#branches .category')].map(a=>{
       const img=a.querySelector('img'),box=img.getBoundingClientRect(),title=a.querySelector('h3').getBoundingClientRect();
       return {id:a.hash.split('/')[1],file:img.src.split('/').pop(),square:Math.abs(box.width-box.height)<1,
-        arrow:!!a.querySelector('.direction-title .ico'),counter:/[0-9]{2}\\s*\\/\\s*06/.test(a.textContent),
+        arrow:!!a.querySelector('.direction-title .ico'),counter:/[0-9]{2}\\s*\\/\\s*[0-9]{2}/.test(a.textContent),
         readable:box.width>=90 && (box.right<=title.left+1 || box.bottom<=title.top+1)};
     })`);
     for(const p of photos)assert.ok(p.file===`${p.id}.webp`&&p.square&&p.readable&&p.arrow&&!p.counter,JSON.stringify(p));
@@ -90,6 +95,27 @@ app.whenReady().then(async()=>{
   }
   await capture('desktop-home');
   await capture('directions-desktop','#branches');
+  await click('a[href="#cat/podcasts"]');
+  await wait(`document.querySelectorAll('#podcast-results .podcast-card').length===${podcasts.length}`);
+  assert.deepEqual(await js(`(async()=>{
+    const cards=[...document.querySelectorAll('.podcast-card')];
+    await Promise.all(cards.flatMap(c=>[...c.querySelectorAll('img')].map(i=>{i.loading='eager';return i.decode().catch(()=>{});})));
+    return cards.map(c=>[c.dataset.podcast,c.querySelector('.podcast-listen').href,c.querySelector('.podcast-author-link').href,
+      c.querySelector('.pair-preview-cover').naturalWidth,c.querySelector('.pair-preview-release').naturalWidth,
+      c.querySelector('figure').classList.contains('has-release')]);
+  })()`),podcasts.map(p=>[p.id,p.episodeUrl,p.authorUrl,480,liveArtwork?600:0,liveArtwork]));
+  await capture('podcasts-desktop');
+  const guest='[data-podcast="pod-vrodylo"]';
+  const topicButton=topic=>`[data-act="podcast-topic"][data-value="${topic}"]`;
+  const searchPodcast=text=>js(`{const q=document.querySelector('#podcast-query');q.value=${JSON.stringify(text)};q.dispatchEvent(new Event('input',{bubbles:true}));}`);
+  await click(topicButton('science'));
+  await wait(`document.querySelectorAll('.podcast-card').length===${filterPodcasts({topic:'science'}).length}`);
+  await searchPodcast('ШИМАНОВСЬКИЙ');await wait(hasText('#podcast-results','Не знайшли подкастів'));
+  await click(topicButton('all'));await wait(`document.querySelectorAll('.podcast-card').length===1 && document.querySelector('${guest}')`);
+  assert.equal(await js(`document.querySelector('${guest} .podcast-guest-link').href`),'https://www.youtube.com/@ShymanovskyiAndrii');
+  await click(`${guest} [data-act="save"]`);
+  await wait(`document.querySelector('${guest} [aria-pressed="true"]') && document.querySelector('#podcast-query').value==='ШИМАНОВСЬКИЙ'`);
+  await searchPodcast('');await go('home');
   await click('a[href="#cat/music"]');await wait(hasText('.pairs','SadSvit'));
   const comparison='.pair-preview details';
   await checkCover(liveArtwork);
@@ -239,6 +265,9 @@ app.whenReady().then(async()=>{
   const phoneWidth=await js('innerWidth');assert.ok(phoneWidth>=360&&phoneWidth<=420,`Expected phone viewport, got ${phoneWidth}px`);
   assert.ok(await js('document.documentElement.scrollWidth<=innerWidth && document.querySelector(".pair-preview-cover").getBoundingClientRect().bottom < document.querySelector(".pair-preview h3").getBoundingClientRect().top'));
   await capture('kaseta-mobile','.pair-preview');
+  await go('cat/podcasts');await wait(hasText(guest,'Андрій Шимановський'));
+  assert.ok(await js(`document.documentElement.scrollWidth<=innerWidth && document.querySelector('${guest}').getBoundingClientRect().right<=innerWidth`));
+  await capture('podcast-mobile',guest);
   await go('arcade');await capture('arcade-mobile');
   for(const kind of ['letters','frames','ladder','word']){
     await click(`.arcade-card-${kind}`);
@@ -268,11 +297,13 @@ app.whenReady().then(async()=>{
   assert.ok(await js('document.documentElement.scrollWidth<=innerWidth'));
   await click('.mobile-nav [data-act="menu"]');await wait('document.querySelector("dialog[open]")');await click('dialog a[href="#authors"]');await wait(hasText('.page-head','Автори'));
   await web.reload();await new Promise(resolve=>web.once('did-finish-load',resolve));await go('saved');await checkCover(liveArtwork);
+  await wait(`document.querySelector('${guest} [aria-pressed="true"]')`);
+  await click(`${guest} [data-act="save"]`);await wait(`!document.querySelector('${guest}') && document.querySelector('.pair-preview')`);
   assert.equal(await js('document.documentElement.dataset.theme'),'dawn');
   await go('arcade');await wait(hasText('.arcade-card-ladder',`1 / ${ladderDecks.normal.length}`));await wait(hasText('.arcade-card-letters','Складно'));await wait(hasText('.arcade-card-frames',`${artScore} / 80`));
   await click('.arcade-card-frames');
   await wait('document.querySelector(\'[data-value="art"][aria-pressed="true"]\')');
   await click('[data-act="frame-album"][data-value="catalog"]');await chooseLevel('normal');await wait(hasText('.mini-start-row','44 / 45'));
-  assert.deepEqual(errors,[]);console.log('Desktop and phone layouts, five arcade games, saved themes, offline art and club scoring: OK');
+  assert.deepEqual(errors,[]);console.log('Desktop and phone layouts, podcast links, filters, bookmarks, arcade and club scoring: OK');
   clearTimeout(watchdog);app.exit(0);
 }).catch(err=>{console.error(err.message);app.exit(1);});
