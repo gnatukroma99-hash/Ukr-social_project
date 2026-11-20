@@ -1,0 +1,7 @@
+[package]
+name = "svoie-core"
+version = "0.1.0"
+description = "Platform-independent rules and Ukrainian word data for Поважайте своє"
+edition.workspace = true
+rust-version.workspace = true
+publish = false

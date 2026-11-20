@@ -1,4 +1,5 @@
 node_modules/
+/target/
 release/
 .cache/
 app/bundle.js
