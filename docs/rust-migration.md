@@ -22,6 +22,19 @@ node tools/check-rust-storage.mjs
 
 `crates/svoie-client` читает тестовые данные по ключам `svoie.v1`, `svoie.arcade.v2` и `svoie.appearance.v1`. Rust восстанавливает закладки, очки офлайн-квестов, тему, рекорды и незавершённое «Вгадай слово». Рекорды, сделанные до выбора сложности, попадают в «Середньо». Модуль не открывает профиль установленного приложения и не переносит токены.
 
+## Локальное превью
+
+Для превью нужны Node.js, цель Rust `wasm32-unknown-unknown` и [wasm-bindgen-cli 0.2.130](https://github.com/wasm-bindgen/wasm-bindgen/releases/tag/0.2.130) в `PATH` (или укажи путь в `WASM_BINDGEN`).
+
+```sh
+npm ci --ignore-scripts
+node tools/build-rust-preview.mjs
+node tools/check-rust-preview.mjs
+python -m http.server 8765 --bind 127.0.0.1 --directory target/svoie-preview
+```
+
+Открой `http://127.0.0.1:8765`. На этом адресе есть отдельные сохранения. На тех же экранах WebAssembly проверяет слова, подбирает подсказки в цепочках, считает дату и баллы офлайн-квестов и читает сохранения аркады. Если браузер не запускает WebAssembly, остаются правила JavaScript. Превью не входит в APK и ZIP и не обращается к API турнира.
+
 ## Следующие этапы
 
 1. Подключить хранилище к клиенту, проверить запись и обновление установленных версий Android и Windows. Не менять ключи, пока обе проверки не пройдены.
