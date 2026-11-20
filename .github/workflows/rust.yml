@@ -8,6 +8,7 @@ on:
       - 'crates/**'
       - 'app/**'
       - 'tools/check-rust-core.mjs'
+      - 'tools/check-rust-storage.mjs'
       - 'tools/export-rust-content.mjs'
       - 'tools/rust-arcade-parity.mjs'
       - '.github/workflows/rust.yml'
@@ -33,3 +34,4 @@ jobs:
       - run: cargo test --workspace --locked --offline
       - run: cargo check --workspace --locked --offline --target wasm32-unknown-unknown
       - run: node tools/check-rust-core.mjs
+      - run: node tools/check-rust-storage.mjs

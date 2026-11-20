@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/svoie-core"]
+members = ["crates/svoie-core", "crates/svoie-client"]
 resolver = "2"
 
 [workspace.package]
